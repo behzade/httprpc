@@ -5,8 +5,10 @@ type Router struct {
 }
 
 func NewRouter() *Router {
+	eg := &EndpointGroup{}
+	eg.root = eg
 	return &Router{
-		&EndpointGroup{},
+		eg,
 	}
 }
 
@@ -14,14 +16,7 @@ type MiddlewareOption interface {
 	apply(*MiddlewareWithPriority)
 }
 
-// Use adds a middleware to the entire router. Priorty -> Higher means earlier execution.
+// Use adds a middleware to the router. Priority -> Higher means earlier execution.
 func (r *Router) Use(middleware Middleware, middlewareOpts ...MiddlewareOption) {
-	out := &MiddlewareWithPriority{
-		Middleware: middleware,
-	}
-
-	for _, opt := range middlewareOpts {
-		opt.apply(out)
-	}
-	r.Middlewares = append(r.Middlewares, out)
+	r.EndpointGroup.Use(middleware, middlewareOpts...)
 }

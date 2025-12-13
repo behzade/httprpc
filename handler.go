@@ -20,10 +20,11 @@ func adaptHandler[Req any, Res any](codec Codec[Req, Res], handler Handler[Req, 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req, err := codec.Decode(r)
 		if err != nil {
-			encodeErr := codec.EncodeError(w, err)
+			encodeErr := codec.EncodeError(w, StatusError{Status: http.StatusBadRequest, Err: err})
 			if encodeErr != nil {
 				slog.Error("failed to encode error response", "error", encodeErr)
 			}
+			return
 		}
 
 		res, err := handler.Handle(r.Context(), req)
