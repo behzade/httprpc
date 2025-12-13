@@ -18,7 +18,7 @@ type pingRes struct {
 
 func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
 	r := NewRouter()
-	RegisterHandler[pingReq, pingRes](JSONCodec[pingReq, pingRes]{}, r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
+	RegisterHandler[pingReq, pingRes](r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
 		return pingRes{Ok: true}, nil
 	}), "/ping"))
 

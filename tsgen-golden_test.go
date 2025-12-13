@@ -28,14 +28,14 @@ type searchHotelsRes struct {
 func TestTSGenGolden(t *testing.T) {
 	r := NewRouter()
 
-	RegisterHandler(JSONCodec[createUserReq, createUserRes]{}, r.EndpointGroup, POST(
+	RegisterHandler[createUserReq, createUserRes](r.EndpointGroup, POST(
 		HandlerFunc[createUserReq, createUserRes](func(context.Context, createUserReq) (createUserRes, error) {
 			return createUserRes{}, nil
 		}),
 		"/v1/users/create",
 	))
 
-	RegisterHandler(JSONCodec[searchHotelsReq, searchHotelsRes]{}, r.EndpointGroup, POST(
+	RegisterHandler[searchHotelsReq, searchHotelsRes](r.EndpointGroup, POST(
 		HandlerFunc[searchHotelsReq, searchHotelsRes](func(context.Context, searchHotelsReq) (searchHotelsRes, error) {
 			return searchHotelsRes{}, nil
 		}),

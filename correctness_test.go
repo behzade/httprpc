@@ -63,9 +63,8 @@ func TestAdaptHandler_ReturnsAfterDecodeError(t *testing.T) {
 func TestGroupRegistration_AppendsToRootHandlers(t *testing.T) {
 	r := NewRouter()
 	g := r.Group("/v1")
-	codec := &testCodec[struct{}, struct{}]{}
 
-	RegisterHandler(codec, g, GET(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
+	RegisterHandler(g, GET(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}), "/ping"))
 
@@ -76,4 +75,3 @@ func TestGroupRegistration_AppendsToRootHandlers(t *testing.T) {
 		t.Fatalf("expected full path %q, got %q", "/v1/ping", r.Handlers[0].Path)
 	}
 }
-
