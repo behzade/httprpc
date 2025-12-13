@@ -22,4 +22,3 @@ func (eg *EndpointGroup) Use(middleware Middleware, middlewareOpts ...Middleware
 	}
 	eg.Middlewares = append(eg.Middlewares, out)
 }
-

@@ -15,4 +15,3 @@ func (e StatusError) Error() string {
 }
 
 func (e StatusError) Unwrap() error { return e.Err }
-

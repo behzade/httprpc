@@ -6,8 +6,8 @@ type EndpointMeta struct {
 	Method string
 	Path   string
 
-	Req  reflect.Type
-	Res  reflect.Type
+	Req reflect.Type
+	Res reflect.Type
 
 	Consumes []string
 	Produces []string
@@ -34,8 +34,8 @@ type EndpointDescription struct {
 	Method string
 	Path   string
 
-	Req  TypeRef
-	Res  TypeRef
+	Req TypeRef
+	Res TypeRef
 
 	Consumes []string
 	Produces []string

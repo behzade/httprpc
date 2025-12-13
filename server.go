@@ -51,4 +51,3 @@ func (r *Router) Server(addr string, opts ...ServerOption) *http.Server {
 	}
 	return s
 }
-

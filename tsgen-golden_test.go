@@ -44,9 +44,9 @@ func TestTSGenGolden(t *testing.T) {
 
 	outDir := t.TempDir()
 	if err := r.GenTSDir(outDir, TSGenOptions{
-		PackageName:       "httprpc-test",
-		ClientName:        "API",
-		SkipPathSegments:  1, // drop "v1"
+		PackageName:      "httprpc-test",
+		ClientName:       "API",
+		SkipPathSegments: 1, // drop "v1"
 	}); err != nil {
 		t.Fatalf("GenTSDir error: %v", err)
 	}

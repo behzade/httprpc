@@ -66,7 +66,9 @@ var tsIndexTemplate string
 // GenTS writes a TypeScript client based on registered endpoint metadata.
 //
 // Intended usage with go:generate:
-//   //go:generate go run ./cmd/gen
+//
+//	//go:generate go run ./cmd/gen
+//
 // where ./cmd/gen constructs your router and calls router.GenTS(...).
 func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 	opts = opts.withDefaults()

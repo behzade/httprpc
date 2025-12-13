@@ -68,7 +68,7 @@ type EndpointGroup struct {
 	Handlers    []*endpoint
 	Middlewares []*MiddlewareWithPriority
 
-	root *EndpointGroup
+	root   *EndpointGroup
 	parent *EndpointGroup
 
 	Metas []*EndpointMeta
@@ -88,7 +88,7 @@ type RegisterOption[Req, Res any] interface {
 }
 
 type registerOptions[Req, Res any] struct {
-	codec Codec[Req, Res]
+	codec       Codec[Req, Res]
 	middlewares []HandlerMiddleware[Req, Res]
 }
 
