@@ -8,7 +8,7 @@ import (
 )
 
 func TestHTTPMiddleware_OrderGroupAndPriority(t *testing.T) {
-	r := NewRouter()
+	r := New()
 
 	var calls []string
 	mw := func(name string) Middleware {

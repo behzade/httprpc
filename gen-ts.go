@@ -560,7 +560,7 @@ func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {
 	}
 }
 
-func requiredSnakeCaseJSONFieldName(owner reflect.Type, f reflect.StructField) (name string, omitempty bool, skip bool, err error) {
+func requiredSnakeCaseJSONFieldName(owner reflect.Type, f reflect.StructField) (name string, omitempty, skip bool, err error) {
 	tag, ok := f.Tag.Lookup("json")
 	if !ok {
 		return "", false, false, fmt.Errorf("%s.%s: missing json tag (suggest %q)", owner.Name(), f.Name, toSnakeCase(f.Name))

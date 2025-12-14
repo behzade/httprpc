@@ -17,7 +17,7 @@ type pingRes struct {
 }
 
 func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
-	r := NewRouter()
+	r := New()
 	RegisterHandler[pingReq, pingRes](r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
 		return pingRes{Ok: true}, nil
 	}), "/ping"))

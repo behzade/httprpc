@@ -1,0 +1,104 @@
+version: "2"
+output:
+  formats:
+    code-climate:
+      path: gl-code-quality-report.json
+    text:
+      path: stdout
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - canonicalheader
+    - containedctx
+    - contextcheck
+    - durationcheck
+    - embeddedstructfieldcheck
+    - copyloopvar
+    - dogsled
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - goprintffuncname
+    - gosec
+    - govet
+    - intrange
+    - ineffassign
+    - misspell
+    - mnd
+    - nakedret
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - revive
+    - sloglint
+    - depguard
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - bidichk
+    - testifylint
+    - rowserrcheck
+    - whitespace
+    - spancheck
+    - sqlclosecheck
+    - wrapcheck
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    embeddedstructfieldcheck:
+      forbid-mutex: true
+    gocritic:
+      disabled-checks:
+        - unnamedResult
+        - hugeParam
+        - paramTypeCombine
+        - commentedOutCode
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    sloglint:
+      static-msg: true
+      key-naming-case: snake
+    govet:
+      enable:
+        - shadow
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

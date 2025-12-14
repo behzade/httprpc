@@ -61,7 +61,7 @@ func TestAdaptHandler_ReturnsAfterDecodeError(t *testing.T) {
 }
 
 func TestGroupRegistration_AppendsToRootHandlers(t *testing.T) {
-	r := NewRouter()
+	r := New()
 	g := r.Group("/v1")
 
 	RegisterHandler(g, GET(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {

@@ -26,7 +26,7 @@ type searchHotelsRes struct {
 }
 
 func TestTSGenGolden(t *testing.T) {
-	r := NewRouter()
+	r := New()
 
 	RegisterHandler[createUserReq, createUserRes](r.EndpointGroup, POST(
 		HandlerFunc[createUserReq, createUserRes](func(context.Context, createUserReq) (createUserRes, error) {

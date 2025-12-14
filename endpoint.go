@@ -13,7 +13,7 @@ type Endpoint[Req, Res any] struct {
 
 type HandlerMiddleware[Req, Res any] func(next Handler[Req, Res]) Handler[Req, Res]
 
-func newEndpoint[Req, Res any](handler Handler[Req, Res], path string, method string) Endpoint[Req, Res] {
+func newEndpoint[Req, Res any](handler Handler[Req, Res], path, method string) Endpoint[Req, Res] {
 	return Endpoint[Req, Res]{
 		Handler: handler,
 		Path:    path,
@@ -112,7 +112,7 @@ func WithMiddlewares[Req, Res any](middlewares ...HandlerMiddleware[Req, Res]) R
 	})
 }
 
-func RegisterHandler[Req any, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opts ...RegisterOption[Req, Res]) {
+func RegisterHandler[Req, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opts ...RegisterOption[Req, Res]) {
 	root := eg.root
 	if root == nil {
 		root = eg

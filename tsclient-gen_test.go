@@ -11,7 +11,7 @@ import (
 func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "tsclient")
 
-	r := NewRouter()
+	r := New()
 	r.SetTSClientGenConfig(&TSClientGenConfig{Dir: outDir})
 
 	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {

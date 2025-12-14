@@ -16,7 +16,7 @@ func (f HandlerFunc[Req, Res]) Handle(ctx context.Context, request Req) (Res, er
 	return f(ctx, request)
 }
 
-func adaptHandler[Req any, Res any](codec Codec[Req, Res], handler Handler[Req, Res]) http.Handler {
+func adaptHandler[Req, Res any](codec Codec[Req, Res], handler Handler[Req, Res]) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req, err := codec.Decode(r)
 		if err != nil {

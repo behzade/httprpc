@@ -8,7 +8,7 @@ import (
 )
 
 func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
-	r := NewRouter()
+	r := New()
 
 	var calls []string
 	mw1 := func(next Handler[struct{}, int]) Handler[struct{}, int] {

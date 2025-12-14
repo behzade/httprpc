@@ -14,13 +14,14 @@ func (statusCodec) Encode(w http.ResponseWriter, res int) error {
 	w.WriteHeader(res)
 	return nil
 }
+
 func (statusCodec) EncodeError(w http.ResponseWriter, err error) error {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 	return nil
 }
 
 func TestRouterHandler_DispatchesAndMethodNotAllowed(t *testing.T) {
-	r := NewRouter()
+	r := New()
 	RegisterHandler[struct{}, int](r.EndpointGroup, GET(HandlerFunc[struct{}, int](func(context.Context, struct{}) (int, error) {
 		return http.StatusOK, nil
 	}), "/ping"), WithCodec[struct{}, int](statusCodec{}))
@@ -46,7 +47,7 @@ func TestRouterHandler_DispatchesAndMethodNotAllowed(t *testing.T) {
 }
 
 func TestRouterDescribe_CollectsTypeInfo(t *testing.T) {
-	r := NewRouter()
+	r := New()
 	RegisterHandler[struct{}, int](r.EndpointGroup, GET(HandlerFunc[struct{}, int](func(context.Context, struct{}) (int, error) {
 		return http.StatusOK, nil
 	}), "/ping"))

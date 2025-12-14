@@ -11,7 +11,7 @@ type Router struct {
 	tsGenCfg      *TSClientGenConfig
 }
 
-func NewRouter() *Router {
+func New() *Router {
 	eg := &EndpointGroup{}
 	eg.root = eg
 	return &Router{
