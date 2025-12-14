@@ -147,8 +147,10 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 	if execErr := tmpl.Execute(&buf, model); execErr != nil {
 		return fmt.Errorf("execute client template: %w", execErr)
 	}
-	_, err = io.Copy(w, &buf)
-	return fmt.Errorf("copy output: %w", err)
+	if _, err = io.Copy(w, &buf); err != nil {
+		return fmt.Errorf("copy output: %w", err)
+	}
+	return nil
 }
 
 // GenTSDir writes a multi-file TypeScript client into dir, split by path segment.
@@ -284,7 +286,10 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	}
 
 	// .httprpc-checksum
-	return fmt.Errorf("write checksum file: %w", os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), filePerm))
+	if err := os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), filePerm); err != nil {
+		return fmt.Errorf("write checksum file: %w", err)
+	}
+	return nil
 }
 
 func firstOr(in []string) string {
@@ -346,7 +351,10 @@ func writeTemplate(path string, tmpl *template.Template, model any) error {
 	if err := tmpl.Execute(&buf, model); err != nil {
 		return fmt.Errorf("execute template: %w", err)
 	}
-	return fmt.Errorf("write file: %w", os.WriteFile(path, buf.Bytes(), filePerm))
+	if err := os.WriteFile(path, buf.Bytes(), filePerm); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+	return nil
 }
 
 func collectTypes(metas []*EndpointMeta) []reflect.Type {

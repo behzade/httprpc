@@ -17,7 +17,10 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 			calls = append(calls, "mw1-before")
 			res, err := next.Handle(ctx, req)
 			calls = append(calls, "mw1-after")
-			return res, fmt.Errorf("mw1: %w", err)
+			if err != nil {
+				return res, fmt.Errorf("mw1: %w", err)
+			}
+			return res, nil
 		})
 	}
 	mw2 := func(next Handler[struct{}, int]) Handler[struct{}, int] {
@@ -25,7 +28,10 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 			calls = append(calls, "mw2-before")
 			res, err := next.Handle(ctx, req)
 			calls = append(calls, "mw2-after")
-			return res, fmt.Errorf("mw2: %w", err)
+			if err != nil {
+				return res, fmt.Errorf("mw2: %w", err)
+			}
+			return res, nil
 		})
 	}
 

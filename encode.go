@@ -38,7 +38,10 @@ func (c JSONCodec[Req, Res]) Decode(r *http.Request) (Req, error) {
 	if errors.Is(err, io.EOF) {
 		return req, nil
 	}
-	return req, fmt.Errorf("decode request: %w", err)
+	if err != nil {
+		return req, fmt.Errorf("decode request: %w", err)
+	}
+	return req, nil
 }
 
 // Encode encodes the response into the HTTP response writer.
@@ -47,7 +50,10 @@ func (c JSONCodec[Req, Res]) Encode(w http.ResponseWriter, res Res) error {
 	if c.Status != 0 {
 		w.WriteHeader(c.Status)
 	}
-	return fmt.Errorf("encode response: %w", json.NewEncoder(w).Encode(res))
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		return fmt.Errorf("encode response: %w", err)
+	}
+	return nil
 }
 
 // EncodeError encodes an error into the HTTP response writer.
@@ -59,5 +65,8 @@ func (c JSONCodec[Req, Res]) EncodeError(w http.ResponseWriter, err error) error
 		status = se.Status
 	}
 	w.WriteHeader(status)
-	return fmt.Errorf("encode error response: %w", json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}))
+	if encErr := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); encErr != nil {
+		return fmt.Errorf("encode error response: %w", encErr)
+	}
+	return nil
 }
