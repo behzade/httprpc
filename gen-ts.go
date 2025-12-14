@@ -665,21 +665,3 @@ func toSnakeCase(s string) string {
 	}
 	return string(out)
 }
-
-func findReflectType(metas []*EndpointMeta, method, path string, wantReq bool) reflect.Type {
-	for _, m := range metas {
-		if m == nil {
-			continue
-		}
-		if m.Method == method && m.Path == path {
-			if wantReq {
-				return deref(m.Req)
-			}
-			return deref(m.Res)
-		}
-	}
-	if wantReq {
-		return reflect.TypeFor[struct{}]()
-	}
-	return reflect.TypeFor[struct{}]()
-}
