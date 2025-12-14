@@ -3,4 +3,4 @@
 
 # Golden outputs for manual inspection (regenerate via UPDATE_GOLDEN=1)
 testdata/tsgen/
-
+gl-code-quality-report.json
