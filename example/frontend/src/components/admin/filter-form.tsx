@@ -25,9 +25,9 @@ import {
 import { cn } from "@/lib/utils";
 import {
   extractValidSavedQueries,
-  SavedQuery,
   useSavedQueries,
 } from "@/hooks/saved-queries";
+import type { SavedQuery } from "@/hooks/saved-queries";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

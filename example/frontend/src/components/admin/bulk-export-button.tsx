@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import type { RaRecord } from "ra-core";
-import { Translate, useBulkExport, UseBulkExportOptions } from "ra-core";
+import { Translate, useBulkExport } from "ra-core";
+import type { UseBulkExportOptions } from "ra-core";
 
 import { Button } from "../ui/button";
 

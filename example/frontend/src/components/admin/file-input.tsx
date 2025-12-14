@@ -15,12 +15,8 @@ import {
   useTranslate,
 } from "ra-core";
 import type { DropzoneOptions } from "react-dropzone";
-import {
-  useDropzone,
-  FileRejection,
-  DropEvent,
-  DropzoneInputProps,
-} from "react-dropzone";
+import { useDropzone } from "react-dropzone";
+import type { FileRejection, DropEvent, DropzoneInputProps } from "react-dropzone";
 import { XCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";

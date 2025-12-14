@@ -1,11 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
   "packages": [
-    "go@1.24.5",
+    "go@1.25.4",
     "golangci-lint@2.7.1",
     "nodejs",
     "pnpm"
   ],
+  "env": {
+    "GOTOOLCHAIN":         "local",
+    "CASSANDRA_CONF":      "$PWD/devbox.d/cassandra",
+    "GOROOT":              ""
+  },
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null"
@@ -14,7 +19,7 @@
       "lint": ["GOFLAGS=-buildvcs=false GOMEMLIMIT=4096MiB golangci-lint run --color always --max-issues-per-linter 100"],
       "fmt": ["golangci-lint fmt"],
       "example:gen": ["sh -c 'set -euo pipefail; cd example && go run . -gen'"],
-      "example:run": ["sh -c 'set -euo pipefail; cd example/frontend && pnpm install && pnpm build; cd .. && go build . && ./example'"]
+      "example:run": ["sh -c 'set -euo pipefail; export CI=true; cd example/frontend && pnpm install --frozen-lockfile && pnpm build; cd .. && go build . && ./example'"]
     }
   }
 }

@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  SupportCreateSuggestionOptions,
-  useSupportCreateSuggestion,
 } from "@/hooks/useSupportCreateSuggestion";
+import type { SupportCreateSuggestionOptions } from "@/hooks/useSupportCreateSuggestion";
+import { useSupportCreateSuggestion } from "@/hooks/useSupportCreateSuggestion";
 import { cn } from "@/lib/utils";
 
 /**

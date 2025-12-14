@@ -100,22 +100,32 @@ func isAPIRequest(path string) bool {
 func spaHandler(staticFS fs.FS) http.Handler {
 	fileServer := http.FileServer(http.FS(staticFS))
 
+	serveIndex := func(w http.ResponseWriter, r *http.Request) {
+		req := r.Clone(r.Context())
+		req.URL.Path = "/"
+		http.ServeFileFS(w, req, staticFS, "index.html")
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		target := path.Clean(strings.TrimPrefix(r.URL.Path, "/"))
 		switch {
-		case target == ".", strings.HasPrefix(target, "../"):
-			target = "index.html"
+		case target == ".", target == "index.html", strings.HasPrefix(target, "../"):
+			serveIndex(w, r)
+			return
 		default:
-			if info, err := fs.Stat(staticFS, target); err == nil && info.IsDir() {
-				target = path.Join(target, "index.html")
+			info, err := fs.Stat(staticFS, target)
+			if err == nil {
+				if info.IsDir() {
+					fileServer.ServeHTTP(w, r)
+					return
+				}
+				req := r.Clone(r.Context())
+				req.URL.Path = "/" + target
+				fileServer.ServeHTTP(w, req)
+				return
 			}
-			if _, err := fs.Stat(staticFS, target); err != nil {
-				target = "index.html"
-			}
+			serveIndex(w, r)
+			return
 		}
-
-		req := r.Clone(r.Context())
-		req.URL.Path = "/" + target
-		fileServer.ServeHTTP(w, req)
 	})
 }
