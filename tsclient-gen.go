@@ -21,8 +21,8 @@ type TSClientGenConfig struct {
 	// Options are passed through to GenTSDir.
 	Options TSGenOptions
 
-	// OnError is called if generation fails during Router.Handler().
-	// If nil, errors are ignored.
+	// OnError is called if GenerateTSClient encounters an error.
+	// If nil, errors are only returned to the caller.
 	OnError func(error)
 }
 
@@ -56,10 +56,20 @@ func (r *Router) tsClientGenConfig() *TSClientGenConfig {
 	return &c
 }
 
-func (r *Router) maybeGenTS(cfg TSClientGenConfig) {
+// GenerateTSClient generates the TypeScript client using the configured TSClientGenConfig.
+// No-op if no config is set. Errors are returned to the caller, and also passed to cfg.OnError if provided.
+func (r *Router) GenerateTSClient() error {
+	cfg := r.tsClientGenConfig()
+	if cfg == nil {
+		return nil
+	}
+	return r.generateTSClient(*cfg)
+}
+
+func (r *Router) generateTSClient(cfg TSClientGenConfig) error {
 	outDir := strings.TrimSpace(cfg.Dir)
 	if outDir == "" {
-		return
+		return nil
 	}
 
 	if !filepath.IsAbs(outDir) {
@@ -75,7 +85,7 @@ func (r *Router) maybeGenTS(cfg TSClientGenConfig) {
 	r.tsGenMu.Lock()
 	if r.tsGenLastDir == outDir && r.tsGenLastHash == sum {
 		r.tsGenMu.Unlock()
-		return
+		return nil
 	}
 	r.tsGenMu.Unlock()
 
@@ -84,20 +94,21 @@ func (r *Router) maybeGenTS(cfg TSClientGenConfig) {
 		r.tsGenLastDir = outDir
 		r.tsGenLastHash = sum
 		r.tsGenMu.Unlock()
-		return
+		return nil
 	}
 
 	if err := r.GenTSDir(outDir, opts); err != nil {
 		if cfg.OnError != nil {
 			cfg.OnError(err)
 		}
-		return
+		return err
 	}
 
 	r.tsGenMu.Lock()
 	r.tsGenLastDir = outDir
 	r.tsGenLastHash = sum
 	r.tsGenMu.Unlock()
+	return nil
 }
 
 func readTSClientChecksum(dir string) (string, error) {

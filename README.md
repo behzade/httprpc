@@ -223,7 +223,7 @@ Then run `go generate` in the directory containing the comment.
 
 ### Runtime Generation
 
-Configure the router for runtime TS generation:
+Configure the router and invoke generation explicitly (e.g., behind a CLI flag):
 
 ```go
 r.SetTSClientGenConfig(&httprpc.TSClientGenConfig{
@@ -232,11 +232,11 @@ r.SetTSClientGenConfig(&httprpc.TSClientGenConfig{
         ClientName: "API",
         SkipPathSegments: 1,
     },
-    OnError: func(err error) { log.Println(err) },
 })
+if err := r.GenerateTSClient(); err != nil {
+    log.Fatal(err)
+}
 ```
-
-The client is regenerated when the router handler is first called, if the checksum changes.
 
 ## Requirements
 

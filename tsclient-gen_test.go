@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
+func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "tsclient")
 
 	r := New()
@@ -18,7 +18,9 @@ func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
 		return struct{}{}, nil
 	}), "/v1/ping"))
 
-	_ = r.Handler()
+	if err := r.GenerateTSClient(); err != nil {
+		t.Fatalf("generate ts client: %v", err)
+	}
 
 	b, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "base.ts")))
 	if err != nil {
@@ -41,7 +43,9 @@ func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
 		return struct{}{}, nil
 	}), "/v1/ping2"))
 
-	_ = r.Handler()
+	if err := r.GenerateTSClient(); err != nil {
+		t.Fatalf("generate ts client: %v", err)
+	}
 
 	sum2, err := readTSClientChecksum(outDir)
 	if err != nil {

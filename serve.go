@@ -41,10 +41,6 @@ func applyMiddlewares(h http.Handler, middlewares []*MiddlewareWithPriority) htt
 // Handler returns an http.Handler that dispatches to registered endpoints.
 // Current behavior is exact match on r.URL.Path (no templating).
 func (r *Router) Handler() http.Handler {
-	if cfg := r.tsClientGenConfig(); cfg != nil {
-		r.maybeGenTS(*cfg)
-	}
-
 	type methods struct {
 		byMethod map[string]http.Handler
 		allow    string
