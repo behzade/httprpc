@@ -1,3 +1,4 @@
+// Package httprpc provides tests for correctness of the httprpc library.
 package httprpc
 
 import (
@@ -46,7 +47,7 @@ func TestAdaptHandler_ReturnsAfterDecodeError(t *testing.T) {
 
 	h := adaptHandler[struct{}, struct{}](codec, handler)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 	h.ServeHTTP(rec, req)
 
 	if called {

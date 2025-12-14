@@ -2,6 +2,7 @@ package httprpc
 
 import "sync"
 
+// Router is the main router for handling HTTP requests.
 type Router struct {
 	*EndpointGroup
 
@@ -11,6 +12,7 @@ type Router struct {
 	tsGenCfg      *TSClientGenConfig
 }
 
+// New creates a new Router.
 func New() *Router {
 	eg := &EndpointGroup{}
 	eg.root = eg
@@ -19,6 +21,7 @@ func New() *Router {
 	}
 }
 
+// MiddlewareOption configures middleware options.
 type MiddlewareOption interface {
 	apply(*MiddlewareWithPriority)
 }

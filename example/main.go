@@ -1,10 +1,17 @@
+// Package main provides an example usage of the httprpc library.
 package main
 
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/behzade/httprpc"
+)
+
+const (
+	exampleReadTimeout  = 30 * time.Second
+	exampleWriteTimeout = 30 * time.Second
 )
 
 func main() {
@@ -19,7 +26,7 @@ func main() {
 	httprpc.RegisterHandler(
 		apiGroup,
 		httprpc.GET(
-			httprpc.HandlerFunc[struct{}, struct{}](func(ctx context.Context, req struct{}) (struct{}, error) {
+			httprpc.HandlerFunc[struct{}, struct{}](func(_ context.Context, _ struct{}) (struct{}, error) {
 				return struct{}{}, nil
 			}),
 			"/ping",
@@ -33,14 +40,20 @@ func main() {
 	httprpc.RegisterHandler(
 		apiGroup,
 		httprpc.POST(
-			httprpc.HandlerFunc[Echo, Echo](func(ctx context.Context, req Echo) (Echo, error) {
+			httprpc.HandlerFunc[Echo, Echo](func(_ context.Context, req Echo) (Echo, error) {
 				return req, nil
 			}),
 			"/echo",
 		),
 	)
 
-	err := http.ListenAndServe(":18080", router.Handler())
+	server := &http.Server{
+		Addr:         ":18080",
+		Handler:      router.Handler(),
+		ReadTimeout:  exampleReadTimeout,
+		WriteTimeout: exampleWriteTimeout,
+	}
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}

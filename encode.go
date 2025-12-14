@@ -3,45 +3,54 @@ package httprpc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
 
+// Codec defines the interface for encoding and decoding HTTP requests and responses.
 type Codec[Req any, Res any] interface {
 	Decode(*http.Request) (Req, error)
 	Encode(http.ResponseWriter, Res) error
 	EncodeError(http.ResponseWriter, error) error
 }
 
+// JSONCodec implements Codec using JSON encoding.
 type JSONCodec[Req any, Res any] struct {
 	Status int
 }
 
+// Consumes returns the content types this codec can decode.
 func (c JSONCodec[Req, Res]) Consumes() []string { return []string{"application/json"} }
+
+// Produces returns the content types this codec can encode.
 func (c JSONCodec[Req, Res]) Produces() []string { return []string{"application/json"} }
 
+// Decode decodes the request body into the request type.
 func (c JSONCodec[Req, Res]) Decode(r *http.Request) (Req, error) {
 	var req Req
 	if r.Body == nil {
 		return req, nil
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if errors.Is(err, io.EOF) {
 		return req, nil
 	}
-	return req, err
+	return req, fmt.Errorf("decode request: %w", err)
 }
 
+// Encode encodes the response into the HTTP response writer.
 func (c JSONCodec[Req, Res]) Encode(w http.ResponseWriter, res Res) error {
 	w.Header().Set("Content-Type", "application/json")
 	if c.Status != 0 {
 		w.WriteHeader(c.Status)
 	}
-	return json.NewEncoder(w).Encode(res)
+	return fmt.Errorf("encode response: %w", json.NewEncoder(w).Encode(res))
 }
 
+// EncodeError encodes an error into the HTTP response writer.
 func (c JSONCodec[Req, Res]) EncodeError(w http.ResponseWriter, err error) error {
 	w.Header().Set("Content-Type", "application/json")
 	status := http.StatusInternalServerError
@@ -50,5 +59,5 @@ func (c JSONCodec[Req, Res]) EncodeError(w http.ResponseWriter, err error) error
 		status = se.Status
 	}
 	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	return fmt.Errorf("encode error response: %w", json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}))
 }

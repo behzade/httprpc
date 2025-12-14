@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// TSClientGenConfig configures TypeScript client generation.
 type TSClientGenConfig struct {
 	// Dir is the output directory for generated TypeScript.
 	// If empty, generation is disabled.
@@ -27,6 +28,7 @@ type TSClientGenConfig struct {
 
 const tsClientChecksumFileName = ".httprpc-checksum"
 
+// SetTSClientGenConfig sets the configuration for TypeScript client generation.
 func (r *Router) SetTSClientGenConfig(cfg *TSClientGenConfig) {
 	r.tsGenMu.Lock()
 	defer r.tsGenMu.Unlock()
@@ -99,7 +101,7 @@ func (r *Router) maybeGenTS(cfg TSClientGenConfig) {
 }
 
 func readTSClientChecksum(dir string) (string, error) {
-	if b, err := os.ReadFile(filepath.Join(dir, tsClientChecksumFileName)); err == nil {
+	if b, err := os.ReadFile(filepath.Clean(filepath.Join(dir, tsClientChecksumFileName))); err == nil {
 		sum := strings.TrimSpace(string(b))
 		if sum == "" {
 			return "", fmt.Errorf("checksum empty")
@@ -107,9 +109,9 @@ func readTSClientChecksum(dir string) (string, error) {
 		return sum, nil
 	}
 
-	b, err := os.ReadFile(filepath.Join(dir, "base.ts"))
+	b, err := os.ReadFile(filepath.Clean(filepath.Join(dir, "base.ts")))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read base.ts: %w", err)
 	}
 	s := string(b)
 	const marker = "export const __httprpc_checksum = "
@@ -128,7 +130,7 @@ func readTSClientChecksum(dir string) (string, error) {
 	lit := s[:j+2]
 	v, err := strconv.Unquote(lit)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("unquote checksum: %w", err)
 	}
 	if v == "" {
 		return "", fmt.Errorf("checksum empty")
@@ -136,11 +138,11 @@ func readTSClientChecksum(dir string) (string, error) {
 	return v, nil
 }
 
+const extraLines = 4
+
 func tsClientChecksum(metas []*EndpointMeta, opts TSGenOptions) string {
-	lines := make([]string, 0, len(metas)+4)
-	lines = append(lines, "package="+opts.PackageName)
-	lines = append(lines, "client="+opts.ClientName)
-	lines = append(lines, fmt.Sprintf("skip=%d", opts.SkipPathSegments))
+	lines := make([]string, 0, len(metas)+extraLines)
+	lines = append(lines, "package="+opts.PackageName, "client="+opts.ClientName, fmt.Sprintf("skip=%d", opts.SkipPathSegments))
 
 	for _, m := range metas {
 		if m == nil {

@@ -2,6 +2,7 @@ package httprpc
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,7 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 			calls = append(calls, "mw1-before")
 			res, err := next.Handle(ctx, req)
 			calls = append(calls, "mw1-after")
-			return res, err
+			return res, fmt.Errorf("mw1: %w", err)
 		})
 	}
 	mw2 := func(next Handler[struct{}, int]) Handler[struct{}, int] {
@@ -24,7 +25,7 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 			calls = append(calls, "mw2-before")
 			res, err := next.Handle(ctx, req)
 			calls = append(calls, "mw2-after")
-			return res, err
+			return res, fmt.Errorf("mw2: %w", err)
 		})
 	}
 
@@ -39,7 +40,7 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 	)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
 	r.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)

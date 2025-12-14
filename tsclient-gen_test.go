@@ -20,7 +20,7 @@ func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
 
 	_ = r.Handler()
 
-	b, err := os.ReadFile(filepath.Join(outDir, "base.ts"))
+	b, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "base.ts")))
 	if err != nil {
 		t.Fatalf("read base.ts: %v", err)
 	}
@@ -28,8 +28,8 @@ func TestRouterHandler_TSClientGenConfig_UsesChecksum(t *testing.T) {
 		t.Fatalf("expected checksum in base.ts")
 	}
 
-	if _, err := os.Stat(filepath.Join(outDir, tsClientChecksumFileName)); err != nil {
-		t.Fatalf("expected %s to exist: %v", tsClientChecksumFileName, err)
+	if _, statErr := os.Stat(filepath.Join(outDir, tsClientChecksumFileName)); statErr != nil {
+		t.Fatalf("expected %s to exist: %v", tsClientChecksumFileName, statErr)
 	}
 
 	sum1, err := readTSClientChecksum(outDir)

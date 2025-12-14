@@ -34,7 +34,7 @@ func TestHTTPMiddleware_OrderGroupAndPriority(t *testing.T) {
 	}), "/ping"), WithCodec[struct{}, int](statusCodec{}))
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/ping", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/ping", http.NoBody)
 	r.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)

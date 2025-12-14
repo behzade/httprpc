@@ -28,14 +28,14 @@ type searchHotelsRes struct {
 func TestTSGenGolden(t *testing.T) {
 	r := New()
 
-	RegisterHandler[createUserReq, createUserRes](r.EndpointGroup, POST(
+	RegisterHandler(r.EndpointGroup, POST(
 		HandlerFunc[createUserReq, createUserRes](func(context.Context, createUserReq) (createUserRes, error) {
 			return createUserRes{}, nil
 		}),
 		"/v1/users/create",
 	))
 
-	RegisterHandler[searchHotelsReq, searchHotelsRes](r.EndpointGroup, POST(
+	RegisterHandler(r.EndpointGroup, POST(
 		HandlerFunc[searchHotelsReq, searchHotelsRes](func(context.Context, searchHotelsReq) (searchHotelsRes, error) {
 			return searchHotelsRes{}, nil
 		}),
@@ -56,15 +56,15 @@ func TestTSGenGolden(t *testing.T) {
 
 	update := os.Getenv("UPDATE_GOLDEN") != ""
 	if update {
-		if err := os.MkdirAll(goldenDir, 0o755); err != nil {
+		if err := os.MkdirAll(goldenDir, 0o750); err != nil {
 			t.Fatalf("mkdir golden dir: %v", err)
 		}
 		for _, f := range wantFiles {
-			b, err := os.ReadFile(filepath.Join(outDir, f))
+			b, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, f)))
 			if err != nil {
 				t.Fatalf("read generated %s: %v", f, err)
 			}
-			if err := os.WriteFile(filepath.Join(goldenDir, f), b, 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(goldenDir, f), b, 0o600); err != nil {
 				t.Fatalf("write golden %s: %v", f, err)
 			}
 		}
@@ -74,11 +74,11 @@ func TestTSGenGolden(t *testing.T) {
 		gotPath := filepath.Join(outDir, f)
 		wantPath := filepath.Join(goldenDir, f)
 
-		got, err := os.ReadFile(gotPath)
+		got, err := os.ReadFile(filepath.Clean(gotPath))
 		if err != nil {
 			t.Fatalf("read generated %s: %v", gotPath, err)
 		}
-		want, err := os.ReadFile(wantPath)
+		want, err := os.ReadFile(filepath.Clean(wantPath))
 		if err != nil {
 			if !update {
 				t.Skipf("missing golden %s (run with UPDATE_GOLDEN=1 to generate)", wantPath)

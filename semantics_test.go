@@ -14,7 +14,7 @@ func TestJSONCodecDecode_EmptyBodyDoesNotError(t *testing.T) {
 	}
 
 	codec := JSONCodec[Req, struct{}]{}
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 
 	got, err := codec.Decode(req)
 	if err != nil {

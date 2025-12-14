@@ -18,7 +18,7 @@ type pingRes struct {
 
 func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
 	r := New()
-	RegisterHandler[pingReq, pingRes](r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
+	RegisterHandler(r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
 		return pingRes{Ok: true}, nil
 	}), "/ping"))
 
@@ -27,11 +27,11 @@ func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
 		t.Fatalf("GenTSDir error: %v", err)
 	}
 
-	index, err := os.ReadFile(filepath.Join(outDir, "index.ts"))
+	index, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "index.ts")))
 	if err != nil {
 		t.Fatalf("read index.ts: %v", err)
 	}
-	mod, err := os.ReadFile(filepath.Join(outDir, "ping.ts"))
+	mod, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "ping.ts")))
 	if err != nil {
 		t.Fatalf("read ping.ts: %v", err)
 	}

@@ -6,12 +6,15 @@ import (
 	"net/http"
 )
 
+// Handler defines the interface for handling requests.
 type Handler[Req any, Res any] interface {
 	Handle(ctx context.Context, request Req) (Res, error)
 }
 
+// HandlerFunc is a function type that implements Handler.
 type HandlerFunc[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
 
+// Handle implements the Handler interface.
 func (f HandlerFunc[Req, Res]) Handle(ctx context.Context, request Req) (Res, error) {
 	return f(ctx, request)
 }

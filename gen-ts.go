@@ -16,6 +16,14 @@ import (
 	_ "embed"
 )
 
+const (
+	rootModule  = "root"
+	unknownType = "unknown"
+	dirPerm     = 0o755
+	filePerm    = 0o600
+)
+
+// TSGenOptions configures TypeScript generation.
 type TSGenOptions struct {
 	PackageName string
 	ClientName  string
@@ -108,8 +116,8 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 			MethodName: endpointMethodName(m.Method, m.Path),
 			ReqType:    reqType,
 			ResType:    resType,
-			Consumes:   firstOr(m.Consumes, "application/json"),
-			Produces:   firstOr(m.Produces, "application/json"),
+			Consumes:   firstOr(m.Consumes),
+			Produces:   firstOr(m.Produces),
 			HasBody:    hasBody,
 		})
 	}
@@ -124,7 +132,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		Funcs(template.FuncMap{"quote": strconv.Quote}).
 		Parse(tsClientTemplate)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse client template: %w", err)
 	}
 
 	model := tsModel{
@@ -136,19 +144,19 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 	}
 
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, model); err != nil {
-		return err
+	if execErr := tmpl.Execute(&buf, model); execErr != nil {
+		return fmt.Errorf("execute client template: %w", execErr)
 	}
 	_, err = io.Copy(w, &buf)
-	return err
+	return fmt.Errorf("copy output: %w", err)
 }
 
 // GenTSDir writes a multi-file TypeScript client into dir, split by path segment.
 // It overwrites the generated files it creates.
 func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	opts = opts.withDefaults()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+	if err := os.MkdirAll(dir, dirPerm); err != nil {
+		return fmt.Errorf("create directory: %w", err)
 	}
 	checksum := tsClientChecksum(r.Metas, opts)
 
@@ -170,15 +178,15 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 
 	baseTmpl, err := template.New("base").Funcs(template.FuncMap{"quote": strconv.Quote}).Parse(tsBaseTemplate)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse base template: %w", err)
 	}
 	moduleTmpl, err := template.New("module").Funcs(template.FuncMap{"quote": strconv.Quote}).Parse(tsModuleTemplate)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse module template: %w", err)
 	}
 	indexTmpl, err := template.New("index").Funcs(template.FuncMap{"quote": strconv.Quote}).Parse(tsIndexTemplate)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse index template: %w", err)
 	}
 
 	// base.ts
@@ -228,8 +236,8 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 				MethodName: endpointMethodName(m.Method, m.Path),
 				ReqType:    reqType,
 				ResType:    resType,
-				Consumes:   firstOr(m.Consumes, "application/json"),
-				Produces:   firstOr(m.Produces, "application/json"),
+				Consumes:   firstOr(m.Consumes),
+				Produces:   firstOr(m.Produces),
 				HasBody:    hasBody,
 			})
 		}
@@ -269,19 +277,19 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 		"Checksum":    checksum,
 		"Modules":     indexModules,
 	}); err != nil {
-		return err
+		return fmt.Errorf("execute index template: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "index.ts"), buf.Bytes(), 0o644); err != nil {
-		return err
+	if err := os.WriteFile(filepath.Join(dir, "index.ts"), buf.Bytes(), filePerm); err != nil {
+		return fmt.Errorf("write index file: %w", err)
 	}
 
 	// .httprpc-checksum
-	return os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), 0o644)
+	return fmt.Errorf("write checksum file: %w", os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), filePerm))
 }
 
-func firstOr(in []string, fallback string) string {
+func firstOr(in []string) string {
 	if len(in) == 0 || in[0] == "" {
-		return fallback
+		return "application/json"
 	}
 	return in[0]
 }
@@ -289,7 +297,7 @@ func firstOr(in []string, fallback string) string {
 func moduleKey(path string, skip int) string {
 	path = strings.Trim(path, "/")
 	if path == "" {
-		return "root"
+		return rootModule
 	}
 	parts := strings.Split(path, "/")
 	for len(parts) > 0 && parts[0] == "" {
@@ -299,20 +307,20 @@ func moduleKey(path string, skip int) string {
 		parts = parts[skip:]
 	}
 	if len(parts) == 0 || parts[0] == "" {
-		return "root"
+		return rootModule
 	}
 	return parts[0]
 }
 
 func moduleFileName(key string) string {
 	if key == "" {
-		return "root"
+		return rootModule
 	}
 	return strings.ToLower(sanitizeIdent(key))
 }
 
 func moduleClientClassName(key string) string {
-	if key == "" || key == "root" {
+	if key == "" || key == rootModule {
 		return "RootClient"
 	}
 	s := sanitizeIdent(key)
@@ -323,12 +331,12 @@ func moduleClientClassName(key string) string {
 }
 
 func modulePropName(key string) string {
-	if key == "" || key == "root" {
-		return "root"
+	if key == "" || key == rootModule {
+		return rootModule
 	}
 	s := sanitizeIdent(key)
 	if s == "" {
-		return "root"
+		return rootModule
 	}
 	return lowerFirst(s)
 }
@@ -336,9 +344,9 @@ func modulePropName(key string) string {
 func writeTemplate(path string, tmpl *template.Template, model any) error {
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, model); err != nil {
-		return err
+		return fmt.Errorf("execute template: %w", err)
 	}
-	return os.WriteFile(path, buf.Bytes(), 0o644)
+	return fmt.Errorf("write file: %w", os.WriteFile(path, buf.Bytes(), filePerm))
 }
 
 func collectTypes(metas []*EndpointMeta) []reflect.Type {
@@ -361,7 +369,7 @@ func collectTypes(metas []*EndpointMeta) []reflect.Type {
 		switch t.Kind() {
 		case reflect.Struct:
 			out = append(out, t)
-			for i := 0; i < t.NumField(); i++ {
+			for i := range t.NumField() {
 				f := t.Field(i)
 				if !f.IsExported() {
 					continue
@@ -372,6 +380,8 @@ func collectTypes(metas []*EndpointMeta) []reflect.Type {
 			visit(t.Elem())
 		case reflect.Map:
 			visit(t.Elem())
+		default:
+			// do nothing for other types
 		}
 	}
 
@@ -483,7 +493,7 @@ func tsTypeDef(t reflect.Type, name string, typeNames map[reflect.Type]string) (
 	b.WriteString(name)
 	b.WriteString(" {\n")
 
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		f := t.Field(i)
 		if !f.IsExported() {
 			continue
@@ -527,7 +537,7 @@ func hasJSONBody(req reflect.Type) bool {
 
 func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {
 	if t == nil {
-		return "unknown"
+		return unknownType
 	}
 	switch t.Kind() {
 	case reflect.Pointer:
@@ -552,11 +562,11 @@ func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {
 			return name
 		}
 		// fallback for unnamed structs or missed registration
-		return "Record<string, unknown>"
+		return "Record<string, " + unknownType + ">"
 	case reflect.Interface:
-		return "unknown"
+		return unknownType
 	default:
-		return "unknown"
+		return unknownType
 	}
 }
 
