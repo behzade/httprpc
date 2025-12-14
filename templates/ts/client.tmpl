@@ -4,6 +4,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS'
 
 export interface ClientOptions { baseUrl: string; fetch?: typeof fetch }
 
+export const __httprpc_checksum = {{quote .Checksum}}
+
 export class {{.ClientName}} {
   private readonly baseUrl: string
   private readonly fetchImpl: typeof fetch
@@ -32,10 +34,17 @@ export class {{.ClientName}} {
   }
 
 {{- range .Endpoints}}
+{{- if .HasBody}}
   async {{.MethodName}}(req: {{.ReqType}}): Promise<{{.ResType}}> {
     return this.request<{{.ReqType}}, {{.ResType}}>({{quote .Method}}, {{quote .Path}}, req, { 'Accept': {{quote .Produces}}, 'Content-Type': {{quote .Consumes}} })
   }
 
+{{- else}}
+  async {{.MethodName}}(): Promise<{{.ResType}}> {
+    return this.request<{{.ReqType}}, {{.ResType}}>({{quote .Method}}, {{quote .Path}}, undefined, { 'Accept': {{quote .Produces}} })
+  }
+
+{{- end}}
 {{- end}}
 }
 
@@ -43,4 +52,3 @@ export class {{.ClientName}} {
 {{.}}
 
 {{- end}}
-

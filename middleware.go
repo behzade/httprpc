@@ -7,6 +7,7 @@ func (p middlewarePriority) apply(out *MiddlewareWithPriority) {
 }
 
 // Priority sets middleware ordering. Higher priority runs earlier (wraps outer).
+// For equal priority, later-registered middleware wraps outer.
 func Priority(priority int) MiddlewareOption {
 	return middlewarePriority(priority)
 }

@@ -12,6 +12,7 @@ export class {{.ClientName}} {
   constructor(private readonly opts: ClientOptions) {}
 
 {{- range .Endpoints}}
+{{- if .HasBody}}
   async {{.MethodName}}(req: {{.ReqType}}): Promise<{{.ResType}}> {
     return request<{{.ReqType}}, {{.ResType}}>(
       this.opts,
@@ -22,6 +23,17 @@ export class {{.ClientName}} {
     )
   }
 
+{{- else}}
+  async {{.MethodName}}(): Promise<{{.ResType}}> {
+    return request<{{.ReqType}}, {{.ResType}}>(
+      this.opts,
+      {{quote .Method}},
+      {{quote .Path}},
+      undefined,
+      { 'Accept': {{quote .Produces}} },
+    )
+  }
+
+{{- end}}
 {{- end}}
 }
-

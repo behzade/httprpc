@@ -11,16 +11,8 @@ func collectMiddlewares(group *EndpointGroup) []*MiddlewareWithPriority {
 		return nil
 	}
 
-	var chain []*EndpointGroup
-	for g := group; g != nil; g = g.parent {
-		chain = append(chain, g)
-	}
-	for i, j := 0, len(chain)-1; i < j; i, j = i+1, j-1 {
-		chain[i], chain[j] = chain[j], chain[i]
-	}
-
 	var out []*MiddlewareWithPriority
-	for _, g := range chain {
+	for g := group; g != nil; g = g.parent {
 		out = append(out, g.Middlewares...)
 	}
 	return out
@@ -33,7 +25,8 @@ func applyMiddlewares(h http.Handler, middlewares []*MiddlewareWithPriority) htt
 
 	ordered := append([]*MiddlewareWithPriority(nil), middlewares...)
 	sort.SliceStable(ordered, func(i, j int) bool {
-		return ordered[i].Priority > ordered[j].Priority
+		// Higher priority runs earlier (wraps outer), so we apply it later.
+		return ordered[i].Priority < ordered[j].Priority
 	})
 
 	for _, mw := range ordered {
@@ -48,6 +41,10 @@ func applyMiddlewares(h http.Handler, middlewares []*MiddlewareWithPriority) htt
 // Handler returns an http.Handler that dispatches to registered endpoints.
 // Current behavior is exact match on r.URL.Path (no templating).
 func (r *Router) Handler() http.Handler {
+	if cfg := r.tsClientGenConfig(); cfg != nil {
+		r.maybeGenTS(*cfg)
+	}
+
 	type methods struct {
 		byMethod map[string]http.Handler
 		allow    string

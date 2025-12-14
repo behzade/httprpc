@@ -3,6 +3,7 @@
 import type { ClientOptions } from './base'
 export type { ClientOptions, HttpMethod } from './base'
 export { request } from './base'
+export { __httprpc_checksum } from './base'
 
 {{- range .Modules}}
 import { {{.ClassName}} } from './{{.File}}'

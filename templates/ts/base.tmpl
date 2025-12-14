@@ -4,6 +4,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS'
 
 export interface ClientOptions { baseUrl: string; fetch?: typeof fetch }
 
+export const __httprpc_checksum = {{quote .Checksum}}
+
 export async function request<TReq, TRes>(
   opts: ClientOptions,
   method: HttpMethod,
@@ -29,4 +31,3 @@ export async function request<TReq, TRes>(
   if (res.status === 204) return undefined as unknown as TRes
   return (await res.json()) as TRes
 }
-

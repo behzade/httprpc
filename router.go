@@ -1,14 +1,21 @@
 package httprpc
 
+import "sync"
+
 type Router struct {
 	*EndpointGroup
+
+	tsGenMu       sync.Mutex
+	tsGenLastDir  string
+	tsGenLastHash string
+	tsGenCfg      *TSClientGenConfig
 }
 
 func NewRouter() *Router {
 	eg := &EndpointGroup{}
 	eg.root = eg
 	return &Router{
-		eg,
+		EndpointGroup: eg,
 	}
 }
 

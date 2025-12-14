@@ -42,6 +42,7 @@ type tsEndpointModel struct {
 	ResType    string
 	Consumes   string
 	Produces   string
+	HasBody    bool
 }
 
 type tsModel struct {
@@ -49,6 +50,7 @@ type tsModel struct {
 	ClientName  string
 	Endpoints   []tsEndpointModel
 	TypeDefs    []string
+	Checksum    string
 }
 
 //go:embed templates/ts/client.tmpl
@@ -73,6 +75,7 @@ var tsIndexTemplate string
 func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 	opts = opts.withDefaults()
 	meta := r.Metas
+	checksum := tsClientChecksum(meta, opts)
 
 	types := collectTypes(meta)
 	typeNames := assignTypeNames(types)
@@ -97,6 +100,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		}
 		reqType := typeNames[deref(m.Req)]
 		resType := typeNames[deref(m.Res)]
+		hasBody := hasJSONBody(deref(m.Req))
 
 		endpoints = append(endpoints, tsEndpointModel{
 			Method:     strings.ToUpper(m.Method),
@@ -106,6 +110,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 			ResType:    resType,
 			Consumes:   firstOr(m.Consumes, "application/json"),
 			Produces:   firstOr(m.Produces, "application/json"),
+			HasBody:    hasBody,
 		})
 	}
 	sort.SliceStable(endpoints, func(i, j int) bool {
@@ -127,6 +132,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		ClientName:  opts.ClientName,
 		Endpoints:   endpoints,
 		TypeDefs:    typeDefs,
+		Checksum:    checksum,
 	}
 
 	var buf bytes.Buffer
@@ -144,6 +150,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+	checksum := tsClientChecksum(r.Metas, opts)
 
 	// Group endpoints by module segment.
 	modules := map[string][]*EndpointMeta{}
@@ -178,6 +185,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := writeTemplate(filepath.Join(dir, "base.ts"), baseTmpl, tsModel{
 		PackageName: opts.PackageName,
 		ClientName:  opts.ClientName,
+		Checksum:    checksum,
 	}); err != nil {
 		return err
 	}
@@ -213,6 +221,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 		for _, m := range metas {
 			reqType := typeNames[deref(m.Req)]
 			resType := typeNames[deref(m.Res)]
+			hasBody := hasJSONBody(deref(m.Req))
 			endpoints = append(endpoints, tsEndpointModel{
 				Method:     strings.ToUpper(m.Method),
 				Path:       m.Path,
@@ -221,6 +230,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 				ResType:    resType,
 				Consumes:   firstOr(m.Consumes, "application/json"),
 				Produces:   firstOr(m.Produces, "application/json"),
+				HasBody:    hasBody,
 			})
 		}
 		sort.SliceStable(endpoints, func(i, j int) bool {
@@ -235,6 +245,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 			ClientName:  moduleClientClassName(key),
 			Endpoints:   endpoints,
 			TypeDefs:    typeDefs,
+			Checksum:    checksum,
 		}
 
 		file := moduleFileName(key) + ".ts"
@@ -255,11 +266,17 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := indexTmpl.Execute(&buf, map[string]any{
 		"PackageName": opts.PackageName,
 		"ClientName":  opts.ClientName,
+		"Checksum":    checksum,
 		"Modules":     indexModules,
 	}); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "index.ts"), buf.Bytes(), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, "index.ts"), buf.Bytes(), 0o644); err != nil {
+		return err
+	}
+
+	// .httprpc-checksum
+	return os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), 0o644)
 }
 
 func firstOr(in []string, fallback string) string {
@@ -476,12 +493,12 @@ func tsTypeDef(t reflect.Type, name string, typeNames map[reflect.Type]string) (
 			continue
 		}
 
-		jsonName, omit, skip := jsonFieldName(f)
+		jsonName, omit, skip, err := requiredSnakeCaseJSONFieldName(t, f)
+		if err != nil {
+			return "", err
+		}
 		if skip {
 			continue
-		}
-		if jsonName == "" {
-			jsonName = lowerFirst(f.Name)
 		}
 
 		tsType := tsTypeExpr(f.Type, typeNames)
@@ -498,6 +515,14 @@ func tsTypeDef(t reflect.Type, name string, typeNames map[reflect.Type]string) (
 
 	b.WriteString("}")
 	return b.String(), nil
+}
+
+func hasJSONBody(req reflect.Type) bool {
+	req = deref(req)
+	if req.Kind() == reflect.Struct && req.NumField() == 0 {
+		return false
+	}
+	return true
 }
 
 func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {
@@ -535,13 +560,16 @@ func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {
 	}
 }
 
-func jsonFieldName(f reflect.StructField) (name string, omitempty bool, skip bool) {
-	tag := f.Tag.Get("json")
-	if tag == "-" {
-		return "", false, true
+func requiredSnakeCaseJSONFieldName(owner reflect.Type, f reflect.StructField) (name string, omitempty bool, skip bool, err error) {
+	tag, ok := f.Tag.Lookup("json")
+	if !ok {
+		return "", false, false, fmt.Errorf("%s.%s: missing json tag (suggest %q)", owner.Name(), f.Name, toSnakeCase(f.Name))
 	}
-	if tag == "" {
-		return "", false, false
+	if tag == "-" {
+		return "", false, true, nil
+	}
+	if tag == "" || strings.HasPrefix(tag, ",") {
+		return "", false, false, fmt.Errorf("%s.%s: json tag must specify an explicit snake_case name (suggest %q)", owner.Name(), f.Name, toSnakeCase(f.Name))
 	}
 	parts := strings.Split(tag, ",")
 	if len(parts) > 0 {
@@ -552,7 +580,10 @@ func jsonFieldName(f reflect.StructField) (name string, omitempty bool, skip boo
 			omitempty = true
 		}
 	}
-	return name, omitempty, false
+	if !isSnakeCase(name) {
+		return "", false, false, fmt.Errorf("%s.%s: json tag %q must be snake_case (suggest %q)", owner.Name(), f.Name, name, toSnakeCase(name))
+	}
+	return name, omitempty, false, nil
 }
 
 func lowerFirst(s string) string {
@@ -562,6 +593,77 @@ func lowerFirst(s string) string {
 	r := []rune(s)
 	r[0] = unicode.ToLower(r[0])
 	return string(r)
+}
+
+func isSnakeCase(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= '0' && r <= '9' && i > 0:
+		case r == '_' && i > 0:
+		default:
+			return false
+		}
+	}
+	return s[0] >= 'a' && s[0] <= 'z'
+}
+
+func toSnakeCase(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+
+	var out []rune
+	var prev rune
+	var wroteUnderscore bool
+
+	rs := []rune(s)
+	for i, r := range rs {
+		if r == '_' || r == '-' || unicode.IsSpace(r) {
+			if len(out) > 0 && !wroteUnderscore {
+				out = append(out, '_')
+				wroteUnderscore = true
+			}
+			prev = r
+			continue
+		}
+
+		isUpper := unicode.IsUpper(r)
+		isLower := unicode.IsLower(r)
+		isDigit := unicode.IsDigit(r)
+
+		if isUpper {
+			nextLower := false
+			if i+1 < len(rs) {
+				nextLower = unicode.IsLower(rs[i+1])
+			}
+			if len(out) > 0 && !wroteUnderscore {
+				if unicode.IsLower(prev) || unicode.IsDigit(prev) || nextLower {
+					out = append(out, '_')
+				}
+			}
+			r = unicode.ToLower(r)
+			wroteUnderscore = false
+			out = append(out, r)
+		} else if isLower || isDigit {
+			wroteUnderscore = false
+			out = append(out, unicode.ToLower(r))
+		}
+
+		prev = r
+	}
+
+	for len(out) > 0 && out[0] == '_' {
+		out = out[1:]
+	}
+	for len(out) > 0 && out[len(out)-1] == '_' {
+		out = out[:len(out)-1]
+	}
+	return string(out)
 }
 
 func findReflectType(metas []*EndpointMeta, method, path string, wantReq bool) reflect.Type {
