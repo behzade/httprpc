@@ -32,6 +32,7 @@ func main() {
 		Dir: "./frontend/lib/api",
 	})
 
+	productRepo := newProductRepo()
 	apiGroup := router.Group("/api")
 
 	httprpc.RegisterHandler(
@@ -55,6 +56,56 @@ func main() {
 				return req, nil
 			}),
 			"/echo",
+		),
+	)
+
+	httprpc.RegisterHandler(
+		apiGroup,
+		httprpc.POST(
+			httprpc.HandlerFunc[ListProductsRequest, ListProductsResponse](func(_ context.Context, req ListProductsRequest) (ListProductsResponse, error) {
+				return productRepo.List(req)
+			}),
+			"/products/list",
+		),
+	)
+
+	httprpc.RegisterHandler(
+		apiGroup,
+		httprpc.POST(
+			httprpc.HandlerFunc[GetProductRequest, Product](func(_ context.Context, req GetProductRequest) (Product, error) {
+				return productRepo.Get(req.ID)
+			}),
+			"/products/get",
+		),
+	)
+
+	httprpc.RegisterHandler(
+		apiGroup,
+		httprpc.POST(
+			httprpc.HandlerFunc[CreateProductRequest, Product](func(_ context.Context, req CreateProductRequest) (Product, error) {
+				return productRepo.Create(req)
+			}),
+			"/products",
+		),
+	)
+
+	httprpc.RegisterHandler(
+		apiGroup,
+		httprpc.PUT(
+			httprpc.HandlerFunc[UpdateProductRequest, Product](func(_ context.Context, req UpdateProductRequest) (Product, error) {
+				return productRepo.Update(req)
+			}),
+			"/products",
+		),
+	)
+
+	httprpc.RegisterHandler(
+		apiGroup,
+		httprpc.DELETE(
+			httprpc.HandlerFunc[DeleteProductRequest, DeleteProductResponse](func(_ context.Context, req DeleteProductRequest) (DeleteProductResponse, error) {
+				return productRepo.Delete(req.ID)
+			}),
+			"/products",
 		),
 	)
 

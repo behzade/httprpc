@@ -3,8 +3,49 @@
 import type { ClientOptions } from './base'
 import { request } from './base'
 export type Anon = Record<string, never>
+export interface CreateProductRequest {
+  name: string
+  description: string
+  price: number
+  stock: number
+}
+export interface DeleteProductRequest {
+  id: string
+}
+export interface DeleteProductResponse {
+  id: string
+}
 export interface Echo {
   message: string
+}
+export interface GetProductRequest {
+  id: string
+}
+export interface ListProductsRequest {
+  page: number
+  per_page: number
+  sort_field: string
+  sort_direction: string
+  query: string
+}
+export interface ListProductsResponse {
+  items: Product[]
+  total: number
+}
+export interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  stock: number
+  updated_at: number
+}
+export interface UpdateProductRequest {
+  id: string
+  name: string
+  description: string
+  price: number
+  stock: number
 }
 
 export class ApiClient {
@@ -25,6 +66,51 @@ export class ApiClient {
       "/api/ping",
       undefined,
       { 'Accept': "application/json" },
+    )
+  }
+  async delete_api_products(req: DeleteProductRequest): Promise<DeleteProductResponse> {
+    return request<DeleteProductRequest, DeleteProductResponse>(
+      this.opts,
+      "DELETE",
+      "/api/products",
+      req,
+      { 'Accept': "application/json", 'Content-Type': "application/json" },
+    )
+  }
+  async post_api_products(req: CreateProductRequest): Promise<Product> {
+    return request<CreateProductRequest, Product>(
+      this.opts,
+      "POST",
+      "/api/products",
+      req,
+      { 'Accept': "application/json", 'Content-Type': "application/json" },
+    )
+  }
+  async put_api_products(req: UpdateProductRequest): Promise<Product> {
+    return request<UpdateProductRequest, Product>(
+      this.opts,
+      "PUT",
+      "/api/products",
+      req,
+      { 'Accept': "application/json", 'Content-Type': "application/json" },
+    )
+  }
+  async post_api_products_get(req: GetProductRequest): Promise<Product> {
+    return request<GetProductRequest, Product>(
+      this.opts,
+      "POST",
+      "/api/products/get",
+      req,
+      { 'Accept': "application/json", 'Content-Type': "application/json" },
+    )
+  }
+  async post_api_products_list(req: ListProductsRequest): Promise<ListProductsResponse> {
+    return request<ListProductsRequest, ListProductsResponse>(
+      this.opts,
+      "POST",
+      "/api/products/list",
+      req,
+      { 'Accept': "application/json", 'Content-Type': "application/json" },
     )
   }
 }
