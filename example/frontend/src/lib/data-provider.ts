@@ -15,7 +15,6 @@ import { env } from "@/env";
 import { Client } from "../../lib/api";
 import type {
   CreateProductRequest,
-  ListProductsRequest,
   Product,
   UpdateProductRequest,
 } from "../../lib/api/api";
@@ -33,26 +32,6 @@ const ensureProducts = (resource: string) => {
   if (resource !== "products") {
     throw new Error(`Unsupported resource "${resource}"`);
   }
-};
-
-const toListRequest = (params: GetListParams): ListProductsRequest => {
-  const { page = 1, perPage = 25 } = params.pagination ?? {};
-  const { field = "updated_at", order = "DESC" } = params.sort ?? {};
-  const query =
-    typeof params.filter?.q === "string" ? params.filter.q : params.filter?.q
-      ? String(params.filter.q)
-      : "";
-  return {
-    page,
-    per_page: perPage,
-    sort_field: field,
-    sort_direction: order === "DESC" ? "DESC" : "ASC",
-    query,
-  };
-};
-
-const listProducts = async (params: GetListParams) => {
-  return client.api.post_api_products_list(toListRequest(params));
 };
 
 const normalizeId = (id: Identifier) => String(id);
@@ -76,18 +55,20 @@ const mapCreatePayload = (data: Partial<Product>): CreateProductRequest => ({
 });
 
 export const dataProvider: DataProvider = {
-  async getList(resource: string, params: GetListParams) {
+  async getList(resource: string, _params: GetListParams) {
     ensureProducts(resource);
-    const res = await listProducts(params);
+    const res = await client.api.get_api_products_list();
     return { data: res.items as any, total: res.total };
   },
 
   async getOne(resource: string, params: GetOneParams) {
     ensureProducts(resource);
-    const data = await client.api.post_api_products_get({
-      id: normalizeId(params.id),
-    });
-    return { data: data as any };
+    const res = await client.api.get_api_products_list();
+    const product = res.items.find((item) => item.id === normalizeId(params.id));
+    if (!product) {
+      throw new Error(`Product not found: ${params.id}`);
+    }
+    return { data: product as any };
   },
 
   async getMany(resource: string, params: GetManyParams) {
@@ -95,26 +76,16 @@ export const dataProvider: DataProvider = {
     if (!params.ids?.length) {
       return { data: [] };
     }
-    const res = await client.api.post_api_products_list({
-      page: 1,
-      per_page: Math.max(params.ids.length, 50),
-      sort_field: "name",
-      sort_direction: "ASC",
-      query: "",
-    });
+    const res = await client.api.get_api_products_list();
     const wanted = new Set(params.ids.map((id) => normalizeId(id)));
     return {
-      data: res.items.filter((item) => wanted.has(item.id)) as any,
+      data: res.items.filter((item: Product) => wanted.has(item.id)) as any,
     };
   },
 
-  async getManyReference(resource: string, params: GetManyReferenceParams) {
+  async getManyReference(resource: string, _params: GetManyReferenceParams) {
     ensureProducts(resource);
-    const res = await listProducts({
-      pagination: params.pagination,
-      sort: params.sort,
-      filter: params.filter,
-    } as GetListParams);
+    const res = await client.api.get_api_products_list();
     return { data: res.items as any, total: res.total };
   },
 

@@ -50,13 +50,13 @@ export interface UpdateProductRequest {
 
 export class ApiClient {
   constructor(private readonly opts: ClientOptions) {}
-  async post_api_echo(req: Echo): Promise<Echo> {
+  async get_api_echo(): Promise<Echo> {
     return request<Echo, Echo>(
       this.opts,
-      "POST",
+      "GET",
       "/api/echo",
-      req,
-      { 'Accept': "application/json", 'Content-Type': "application/json" },
+      undefined,
+      { 'Accept': "application/json" },
     )
   }
   async get_api_ping(): Promise<Anon> {
@@ -95,22 +95,22 @@ export class ApiClient {
       { 'Accept': "application/json", 'Content-Type': "application/json" },
     )
   }
-  async post_api_products_get(req: GetProductRequest): Promise<Product> {
+  async get_api_products_get(): Promise<Product> {
     return request<GetProductRequest, Product>(
       this.opts,
-      "POST",
+      "GET",
       "/api/products/get",
-      req,
-      { 'Accept': "application/json", 'Content-Type': "application/json" },
+      undefined,
+      { 'Accept': "application/json" },
     )
   }
-  async post_api_products_list(req: ListProductsRequest): Promise<ListProductsResponse> {
+  async get_api_products_list(): Promise<ListProductsResponse> {
     return request<ListProductsRequest, ListProductsResponse>(
       this.opts,
-      "POST",
+      "GET",
       "/api/products/list",
-      req,
-      { 'Accept': "application/json", 'Content-Type': "application/json" },
+      undefined,
+      { 'Accept': "application/json" },
     )
   }
 }
