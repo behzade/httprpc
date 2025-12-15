@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/behzade/httprpc"
+	productdb "github.com/behzade/httprpc/example/internal/adapter/database"
+	httprpcadapter "github.com/behzade/httprpc/example/internal/adapter/httprpc"
+	productcore "github.com/behzade/httprpc/example/internal/core/product"
 )
 
 const (
@@ -32,15 +35,17 @@ func main() {
 		Dir: "./frontend/lib/api",
 	})
 
-	productRepo := newProductRepo()
+	productRepo := productdb.NewInMemoryProductRepository()
+	productModule := productcore.New(productRepo)
+	productHandlers := httprpcadapter.NewProductHandlers(productModule)
 	apiGroup := router.Group("/api")
 
 	httprpc.RegisterHandler(
 		apiGroup,
 		httprpc.GET(
-			httprpc.HandlerFunc[struct{}, struct{}](func(_ context.Context, _ struct{}) (struct{}, error) {
+			func(_ context.Context, _ struct{}) (struct{}, error) {
 				return struct{}{}, nil
-			}),
+			},
 			"/ping",
 		),
 	)
@@ -52,62 +57,14 @@ func main() {
 	httprpc.RegisterHandler(
 		apiGroup,
 		httprpc.POST(
-			httprpc.HandlerFunc[Echo, Echo](func(_ context.Context, req Echo) (Echo, error) {
+			func(_ context.Context, req Echo) (Echo, error) {
 				return req, nil
-			}),
+			},
 			"/echo",
 		),
 	)
 
-	httprpc.RegisterHandler(
-		apiGroup,
-		httprpc.POST(
-			httprpc.HandlerFunc[ListProductsRequest, ListProductsResponse](func(_ context.Context, req ListProductsRequest) (ListProductsResponse, error) {
-				return productRepo.List(req)
-			}),
-			"/products/list",
-		),
-	)
-
-	httprpc.RegisterHandler(
-		apiGroup,
-		httprpc.POST(
-			httprpc.HandlerFunc[GetProductRequest, Product](func(_ context.Context, req GetProductRequest) (Product, error) {
-				return productRepo.Get(req.ID)
-			}),
-			"/products/get",
-		),
-	)
-
-	httprpc.RegisterHandler(
-		apiGroup,
-		httprpc.POST(
-			httprpc.HandlerFunc[CreateProductRequest, Product](func(_ context.Context, req CreateProductRequest) (Product, error) {
-				return productRepo.Create(req)
-			}),
-			"/products",
-		),
-	)
-
-	httprpc.RegisterHandler(
-		apiGroup,
-		httprpc.PUT(
-			httprpc.HandlerFunc[UpdateProductRequest, Product](func(_ context.Context, req UpdateProductRequest) (Product, error) {
-				return productRepo.Update(req)
-			}),
-			"/products",
-		),
-	)
-
-	httprpc.RegisterHandler(
-		apiGroup,
-		httprpc.DELETE(
-			httprpc.HandlerFunc[DeleteProductRequest, DeleteProductResponse](func(_ context.Context, req DeleteProductRequest) (DeleteProductResponse, error) {
-				return productRepo.Delete(req.ID)
-			}),
-			"/products",
-		),
-	)
+	productHandlers.Register(apiGroup)
 
 	if *shouldGen {
 		if err := router.GenerateTSClient(); err != nil {

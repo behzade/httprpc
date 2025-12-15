@@ -18,9 +18,9 @@ type pingRes struct {
 
 func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
 	r := New()
-	RegisterHandler(r.EndpointGroup, POST(HandlerFunc[pingReq, pingRes](func(context.Context, pingReq) (pingRes, error) {
+	RegisterHandler(r.EndpointGroup, POST(func(context.Context, pingReq) (pingRes, error) {
 		return pingRes{Ok: true}, nil
-	}), "/ping"))
+	}, "/ping"))
 
 	outDir := t.TempDir()
 	if err := r.GenTSDir(outDir, TSGenOptions{PackageName: "httprpc-test", ClientName: "API"}); err != nil {

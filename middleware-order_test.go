@@ -28,10 +28,10 @@ func TestHTTPMiddleware_OrderGroupAndPriority(t *testing.T) {
 	g := r.Group("/v1")
 	g.Use(mw("group"))
 
-	RegisterHandler(g, GET(HandlerFunc[struct{}, int](func(context.Context, struct{}) (int, error) {
+	RegisterHandler(g, GET(func(context.Context, struct{}) (int, error) {
 		calls = append(calls, "handler")
 		return http.StatusOK, nil
-	}), "/ping"), WithCodec[struct{}, int](statusCodec{}))
+	}, "/ping"), WithCodec[struct{}, int](statusCodec{}))
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/ping", http.NoBody)

@@ -35,10 +35,10 @@ func main() {
     r := httprpc.NewRouter()
 
     httprpc.RegisterHandler(r, httprpc.POST(
-        httprpc.HandlerFunc[CreateUserRequest, User](func(ctx context.Context, req CreateUserRequest) (User, error) {
+        func(ctx context.Context, req CreateUserRequest) (User, error) {
             // Your business logic here
             return User{ID: 1, Name: req.Name, Email: req.Email}, nil
-        }),
+        },
         "/users",
     ))
 
@@ -53,11 +53,7 @@ func main() {
 Handlers are typed functions that take a context and a request type, returning a response type and an error:
 
 ```go
-type Handler[Req any, Res any] interface {
-    Handle(ctx context.Context, request Req) (Res, error)
-}
-
-type HandlerFunc[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
+type Handler[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
 ```
 
 ### Endpoints
@@ -124,10 +120,10 @@ Apply per-endpoint typed middleware:
 
 ```go
 httprpc.RegisterHandler(r, endpoint, httprpc.WithMiddleware[Req, Res](func(next httprpc.Handler[Req, Res]) httprpc.Handler[Req, Res] {
-    return httprpc.HandlerFunc[Req, Res](func(ctx context.Context, req Req) (Res, error) {
+    return func(ctx context.Context, req Req) (Res, error) {
         // Typed middleware logic
-        return next.Handle(ctx, req)
-    })
+        return next(ctx, req)
+    }
 }))
 ```
 

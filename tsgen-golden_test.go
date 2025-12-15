@@ -29,16 +29,16 @@ func TestTSGenGolden(t *testing.T) {
 	r := New()
 
 	RegisterHandler(r.EndpointGroup, POST(
-		HandlerFunc[createUserReq, createUserRes](func(context.Context, createUserReq) (createUserRes, error) {
+		func(context.Context, createUserReq) (createUserRes, error) {
 			return createUserRes{}, nil
-		}),
+		},
 		"/v1/users/create",
 	))
 
 	RegisterHandler(r.EndpointGroup, POST(
-		HandlerFunc[searchHotelsReq, searchHotelsRes](func(context.Context, searchHotelsReq) (searchHotelsRes, error) {
+		func(context.Context, searchHotelsReq) (searchHotelsRes, error) {
 			return searchHotelsRes{}, nil
-		}),
+		},
 		"/v1/hotels/search",
 	))
 

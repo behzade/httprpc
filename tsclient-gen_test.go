@@ -14,9 +14,9 @@ func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 	r := New()
 	r.SetTSClientGenConfig(&TSClientGenConfig{Dir: outDir})
 
-	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
+	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(func(context.Context, struct{}) (struct{}, error) {
 		return struct{}{}, nil
-	}), "/v1/ping"))
+	}, "/v1/ping"))
 
 	if err := r.GenerateTSClient(); err != nil {
 		t.Fatalf("generate ts client: %v", err)
@@ -39,9 +39,9 @@ func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 		t.Fatalf("read checksum: %v", err)
 	}
 
-	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
+	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(func(context.Context, struct{}) (struct{}, error) {
 		return struct{}{}, nil
-	}), "/v1/ping2"))
+	}, "/v1/ping2"))
 
 	if err := r.GenerateTSClient(); err != nil {
 		t.Fatalf("generate ts client: %v", err)

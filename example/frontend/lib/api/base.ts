@@ -4,7 +4,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS'
 
 export interface ClientOptions { baseUrl: string; fetch?: typeof fetch }
 
-export const __httprpc_checksum = "b1d8625e7facb7f25a8ce95bc585476aac3bd9bfd2d185816402cd3f0d1ff5ea"
+export const __httprpc_checksum = "a0f4df492368c67a27b2a2f81e836491a4106f964b44e4fe1d953bab2a298b15"
 
 export async function request<TReq, TRes>(
   opts: ClientOptions,

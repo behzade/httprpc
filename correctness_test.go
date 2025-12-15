@@ -40,10 +40,10 @@ func (c *testCodec[Req, Res]) EncodeError(w http.ResponseWriter, err error) erro
 func TestAdaptHandler_ReturnsAfterDecodeError(t *testing.T) {
 	codec := &testCodec[struct{}, struct{}]{decodeErr: errors.New("bad request")}
 	called := false
-	handler := HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
+	handler := func(context.Context, struct{}) (struct{}, error) {
 		called = true
 		return struct{}{}, nil
-	})
+	}
 
 	h := adaptHandler[struct{}, struct{}](codec, handler)
 	rec := httptest.NewRecorder()
@@ -65,9 +65,9 @@ func TestGroupRegistration_AppendsToRootHandlers(t *testing.T) {
 	r := New()
 	g := r.Group("/v1")
 
-	RegisterHandler(g, GET(HandlerFunc[struct{}, struct{}](func(context.Context, struct{}) (struct{}, error) {
+	RegisterHandler(g, GET(func(context.Context, struct{}) (struct{}, error) {
 		return struct{}{}, nil
-	}), "/ping"))
+	}, "/ping"))
 
 	if got := len(r.Handlers); got != 1 {
 		t.Fatalf("expected router to have 1 handler, got %d", got)

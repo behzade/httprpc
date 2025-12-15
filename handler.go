@@ -6,18 +6,8 @@ import (
 	"net/http"
 )
 
-// Handler defines the interface for handling requests.
-type Handler[Req any, Res any] interface {
-	Handle(ctx context.Context, request Req) (Res, error)
-}
-
-// HandlerFunc is a function type that implements Handler.
-type HandlerFunc[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
-
-// Handle implements the Handler interface.
-func (f HandlerFunc[Req, Res]) Handle(ctx context.Context, request Req) (Res, error) {
-	return f(ctx, request)
-}
+// Handler is a simple function type for handling requests.
+type Handler[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
 
 func adaptHandler[Req, Res any](codec Codec[Req, Res], handler Handler[Req, Res]) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +20,7 @@ func adaptHandler[Req, Res any](codec Codec[Req, Res], handler Handler[Req, Res]
 			return
 		}
 
-		res, err := handler.Handle(r.Context(), req)
+		res, err := handler(r.Context(), req)
 		if err != nil {
 			encodeErr := codec.EncodeError(w, err)
 			if encodeErr != nil {
