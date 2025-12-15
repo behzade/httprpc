@@ -170,7 +170,7 @@ func queryFieldName(owner reflect.Type, f reflect.StructField) (name string, ski
 	return fallback, false, nil
 }
 
-func tagName(f reflect.StructField, key string) (name string, found bool, skip bool) {
+func tagName(f reflect.StructField, key string) (name string, found, skip bool) {
 	tag, ok := f.Tag.Lookup(key)
 	if !ok {
 		return "", false, false
