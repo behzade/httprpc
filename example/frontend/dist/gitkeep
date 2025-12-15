@@ -1,0 +1,1 @@
+dist needs to be populated for go build to succeed. run pnpm build to populate it.
