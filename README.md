@@ -96,6 +96,27 @@ server := r.Server(":8080")
 server.ListenAndServe()
 ```
 
+Or use `RunServer` for automatic graceful shutdown on SIGINT/SIGTERM:
+
+```go
+// Simple usage with defaults (graceful shutdown with 30s timeout)
+if err := r.RunServer(":8080"); err != nil {
+    log.Fatal(err)
+}
+
+// Custom shutdown timeout
+r.RunServer(":8080", httprpc.WithGracefulShutdown(60*time.Second))
+
+// Custom logger
+r.RunServer(":8080", httprpc.WithLogger(myLogger))
+
+// Combine options
+r.RunServer(":8080",
+    httprpc.WithGracefulShutdown(60*time.Second),
+    httprpc.WithLogger(myLogger),
+)
+```
+
 ## Middleware
 
 ### Untyped Middleware

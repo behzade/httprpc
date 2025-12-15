@@ -1,6 +1,7 @@
 package httprpc
 
 import (
+	"log/slog"
 	"net/http"
 	"reflect"
 )
@@ -138,7 +139,12 @@ func RegisterHandler[Req, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opt
 		root = eg
 	}
 	if root.sealed {
-		panic("cannot register handlers after handler is built")
+		slog.Error("cannot register handlers after handler is built", "method", in.Method, "path", in.Path)
+		return
+	}
+	if root.sealed {
+		slog.Error("cannot register handlers after handler is built", "method", in.Method, "path", in.Path)
+		return
 	}
 
 	o := registerOptions[Req, Res]{
