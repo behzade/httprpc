@@ -11,6 +11,8 @@ type Router struct {
 
 	tsGenMu  sync.Mutex
 	tsGenCfg *TSClientGenConfig
+
+	fallback http.Handler
 }
 
 // New creates a new Router.
@@ -45,4 +47,10 @@ func (r *Router) HandlerMust() http.Handler {
 		panic(err)
 	}
 	return h
+}
+
+// SetFallback sets a handler that is invoked when no registered endpoint matches the request path.
+// Middlewares registered on the root group still apply to the fallback.
+func (r *Router) SetFallback(h http.Handler) {
+	r.fallback = h
 }

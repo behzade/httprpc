@@ -70,3 +70,51 @@ func TestRouterDescribe_CollectsTypeInfo(t *testing.T) {
 		t.Fatalf("expected consumes/produces to be set")
 	}
 }
+
+func TestRouterFallback(t *testing.T) {
+	r := New()
+
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("X-Middleware", "applied")
+			next.ServeHTTP(w, req)
+		})
+	})
+
+	RegisterHandler[struct{}, int](r.EndpointGroup, GET(func(context.Context, struct{}) (int, error) {
+		return http.StatusOK, nil
+	}, "/ping"), WithCodec[struct{}, int](statusCodec{}))
+
+	r.SetFallback(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/missing", http.NoBody)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTeapot {
+		t.Fatalf("expected fallback status %d, got %d", http.StatusTeapot, rec.Code)
+	}
+	if rec.Header().Get("X-Middleware") != "applied" {
+		t.Fatalf("expected middleware to run on fallback")
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/ping", http.NoBody)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected %d, got %d", http.StatusMethodNotAllowed, rec.Code)
+	}
+}

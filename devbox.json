@@ -19,7 +19,8 @@
       "lint": ["GOFLAGS=-buildvcs=false GOMEMLIMIT=4096MiB golangci-lint run --color always --max-issues-per-linter 100"],
       "fmt": ["golangci-lint fmt"],
       "example:gen": ["sh -c 'set -euo pipefail; cd example && go run . -gen'"],
-      "example:run": ["sh -c 'set -euo pipefail; export CI=true; cd example/frontend && pnpm install --frozen-lockfile && pnpm build; cd .. && go build . && ./example'"]
+      "example:run": ["sh -c 'set -euo pipefail; export CI=true; cd example/frontend && pnpm install --frozen-lockfile && pnpm build; cd .. && go build . && ./example'"],
+      "example:dev": ["sh -c 'set -euo pipefail; trap \"kill 0\" EXIT; frontend_port=${FRONTEND_DEV_PORT:-3000}; frontend_url=\"${FRONTEND_DEV_SERVER:-http://localhost:${frontend_port}}\"; cd example/frontend && pnpm install --frozen-lockfile; pnpm dev --host --port ${frontend_port} & cd ..; FRONTEND_DEV_SERVER=${frontend_url} go run . -frontend-dev-url ${frontend_url}'"]
     }
   }
 }

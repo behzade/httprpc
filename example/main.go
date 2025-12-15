@@ -7,6 +7,8 @@ import (
 	"flag"
 	"io/fs"
 	"net/http"
+	"net/url"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -28,6 +30,7 @@ var embeddedFrontend embed.FS
 
 func main() {
 	shouldGen := flag.Bool("gen", false, "generate TypeScript client and exit")
+	devFrontendURL := flag.String("frontend-dev-url", "", "if set, proxy non-API requests to this dev server instead of embedded assets")
 	flag.Parse()
 
 	router := httprpc.New()
@@ -39,8 +42,6 @@ func main() {
 	router.Use(middleware.Recover(nil), httprpc.Priority(100))
 	router.Use(middleware.RequestID(""), httprpc.Priority(50))
 	router.Use(middleware.Logging(nil))
-	router.Use(middleware.RequestSizeLimit(1 << 20)) // 1MB
-	router.Use(middleware.Timeout(15 * time.Second))
 	router.Use(middleware.CORS(middleware.CORSConfig{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -54,6 +55,8 @@ func main() {
 	productModule := productcore.New(productRepo)
 	productHandlers := httprpcadapter.NewProductHandlers(productModule)
 	apiGroup := router.Group("/api")
+	apiGroup.Use(middleware.RequestSizeLimit(1 << 20)) // 1MB
+	apiGroup.Use(middleware.Timeout(15 * time.Second))
 
 	httprpc.RegisterHandler(
 		apiGroup,
@@ -88,24 +91,34 @@ func main() {
 		return
 	}
 
-	apiHandler, err := router.Handler()
-	if err != nil {
-		panic(err)
+	var frontendHandler http.Handler
+	if target := chooseDevTarget(*devFrontendURL); target != nil {
+		frontendHandler = middleware.ReverseProxyHandler(middleware.ReverseProxyConfig{
+			Target:      target,
+			StripPrefix: "/",
+			// PreserveHost helps local dev servers that expect the browser host.
+			PreserveHost: true,
+		})
+	} else {
+		staticFS, err := fs.Sub(embeddedFrontend, "frontend/dist")
+		if err != nil {
+			panic(err)
+		}
+		frontendHandler = spaHandler(staticFS)
 	}
 
-	staticFS, err := fs.Sub(embeddedFrontend, "frontend/dist")
-	if err != nil {
-		panic(err)
-	}
-	frontendHandler := spaHandler(staticFS)
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.SetFallback(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isAPIRequest(r.URL.Path) {
-			apiHandler.ServeHTTP(w, r)
+			http.NotFound(w, r)
 			return
 		}
 		frontendHandler.ServeHTTP(w, r)
-	})
+	}))
+
+	handler, err := router.Handler()
+	if err != nil {
+		panic(err)
+	}
 
 	server := &http.Server{
 		Addr:         ":18080",
@@ -154,4 +167,22 @@ func spaHandler(staticFS fs.FS) http.Handler {
 			return
 		}
 	})
+}
+
+func chooseDevTarget(flagValue string) *url.URL {
+	target := strings.TrimSpace(flagValue)
+	if target == "" {
+		target = strings.TrimSpace(os.Getenv("FRONTEND_DEV_SERVER"))
+	}
+	if target == "" {
+		return nil
+	}
+	u, err := url.Parse(target)
+	if err != nil {
+		panic(err)
+	}
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+	return u
 }

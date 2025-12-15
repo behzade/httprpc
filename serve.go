@@ -55,6 +55,11 @@ func (r *Router) buildHandler() (http.Handler, error) {
 		root.sealed = true
 	}
 
+	var fallback http.Handler
+	if r.fallback != nil {
+		fallback = applyMiddlewares(r.fallback, collectMiddlewares(root))
+	}
+
 	byPath := make(map[string]*methods, len(r.Handlers))
 	for _, e := range r.Handlers {
 		if e == nil {
@@ -93,6 +98,10 @@ func (r *Router) buildHandler() (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		m := byPath[req.URL.Path]
 		if m == nil {
+			if fallback != nil {
+				fallback.ServeHTTP(w, req)
+				return
+			}
 			http.NotFound(w, req)
 			return
 		}
