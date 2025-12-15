@@ -47,6 +47,14 @@ func (r *Router) buildHandler() (http.Handler, error) {
 		allow    string
 	}
 
+	root := r.EndpointGroup
+	if root != nil && root.root != nil {
+		root = root.root
+	}
+	if root != nil {
+		root.sealed = true
+	}
+
 	byPath := make(map[string]*methods, len(r.Handlers))
 	for _, e := range r.Handlers {
 		if e == nil {

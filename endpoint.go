@@ -84,6 +84,8 @@ type EndpointGroup struct {
 	parent *EndpointGroup
 
 	Metas []*EndpointMeta
+
+	sealed bool
 }
 
 // Group creates a subgroup with the given prefix.
@@ -134,6 +136,9 @@ func RegisterHandler[Req, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opt
 	root := eg.root
 	if root == nil {
 		root = eg
+	}
+	if root.sealed {
+		panic("cannot register handlers after handler is built")
 	}
 
 	o := registerOptions[Req, Res]{

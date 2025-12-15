@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -55,7 +56,15 @@ func Logging(logger *slog.Logger) httprpc.Middleware {
 				"status", status,
 				"duration", time.Since(start),
 				"bytes_written", rec.bytes,
+				"request_id", requestID(r.Context()),
 			)
 		})
 	}
+}
+
+func requestID(ctx context.Context) string {
+	if id, ok := RequestIDFromContext(ctx); ok {
+		return id
+	}
+	return ""
 }

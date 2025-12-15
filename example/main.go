@@ -37,8 +37,18 @@ func main() {
 	})
 
 	router.Use(middleware.Recover(nil), httprpc.Priority(100))
+	router.Use(middleware.RequestID(""))
 	router.Use(middleware.Logging(nil))
 	router.Use(middleware.RequestSizeLimit(1 << 20)) // 1MB
+	router.Use(middleware.Timeout(15 * time.Second))
+	router.Use(middleware.CORS(middleware.CORSConfig{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Request-ID"},
+		ExposeHeaders:    []string{"X-Request-ID"},
+		AllowCredentials: false,
+		MaxAgeSeconds:    600,
+	}))
 
 	productRepo := productdb.NewInMemoryProductRepository()
 	productModule := productcore.New(productRepo)

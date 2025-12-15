@@ -117,6 +117,15 @@ Middleware priority controls execution order (higher priority runs earlier):
 r.Use(middleware, httprpc.Priority(10))
 ```
 
+Built-in middlewares (in `github.com/behzade/httprpc/middleware`):
+
+- `Recover(logger)` – panic recovery with 500 fallback.
+- `Logging(logger)` – request/response logging (includes request ID when set).
+- `RequestID(header)` – propagates/generates request IDs (default header: `X-Request-ID`).
+- `RequestSizeLimit(maxBytes)` – wraps `http.MaxBytesReader`.
+- `Timeout(d)` – adds a per-request context timeout.
+- `CORS(cfg)` – simple configurable CORS handling.
+
 ### Typed Middleware
 
 Apply per-endpoint typed middleware:

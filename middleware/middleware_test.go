@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRecoverMiddleware(t *testing.T) {
@@ -70,5 +71,73 @@ func TestRequestSizeLimit(t *testing.T) {
 
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
+	}
+}
+
+func TestTimeoutMiddleware(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+	h := Timeout(10 * time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if deadline, ok := r.Context().Deadline(); !ok || deadline.IsZero() {
+			t.Fatalf("expected deadline to be set")
+		}
+	}))
+	h.ServeHTTP(rec, req)
+}
+
+func TestRequestIDMiddleware(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+	h := RequestID("")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, ok := RequestIDFromContext(r.Context())
+		if !ok || id == "" {
+			t.Fatalf("expected request id in context")
+		}
+		if got := w.Header().Get("X-Request-ID"); got == "" {
+			t.Fatalf("expected response header set")
+		}
+	}))
+	h.ServeHTTP(rec, req)
+}
+
+func TestCORSMiddleware(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/", http.NoBody)
+
+	cfg := CORSConfig{
+		AllowedOrigins:   []string{"https://example.com"},
+		AllowedMethods:   []string{"GET"},
+		AllowedHeaders:   []string{"X-Test"},
+		ExposeHeaders:    []string{"X-Expose"},
+		AllowCredentials: true,
+		MaxAgeSeconds:    3600,
+	}
+	h := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("should not reach handler on OPTIONS")
+	}))
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://example.com" {
+		t.Fatalf("unexpected allow origin %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); got != "GET" {
+		t.Fatalf("unexpected allow methods %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); got != "X-Test" {
+		t.Fatalf("unexpected allow headers %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Expose-Headers"); got != "X-Expose" {
+		t.Fatalf("unexpected expose headers %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+		t.Fatalf("expected allow credentials true, got %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Max-Age"); got != "3600" {
+		t.Fatalf("unexpected max age %q", got)
 	}
 }
