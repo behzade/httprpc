@@ -85,7 +85,7 @@ func TestRouterFallback(t *testing.T) {
 		return http.StatusOK, nil
 	}, "/ping"), WithCodec[struct{}, int](statusCodec{}))
 
-	r.SetFallback(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	r.SetFallback(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	}))
 

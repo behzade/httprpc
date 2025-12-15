@@ -39,6 +39,7 @@ func ReverseProxyHandler(cfg ReverseProxyConfig) http.Handler {
 
 	strip := cfg.StripPrefix
 	preserveHost := cfg.PreserveHost
+	targetHost := cfg.Target.Host
 	proxy.Director = func(req *http.Request) {
 		origHost := req.Host
 		origDirector(req)
@@ -48,13 +49,15 @@ func ReverseProxyHandler(cfg ReverseProxyConfig) http.Handler {
 		}
 		if preserveHost {
 			req.Host = origHost
+		} else {
+			req.Host = targetHost
 		}
 	}
 
 	if cfg.ErrorHandler != nil {
 		proxy.ErrorHandler = cfg.ErrorHandler
 	} else {
-		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
 			http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 		}
 	}

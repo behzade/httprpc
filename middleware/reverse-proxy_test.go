@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +39,7 @@ func TestReverseProxyHandler_StripsPrefixAndRewritesHost(t *testing.T) {
 }
 
 func TestReverseProxyMiddleware_MatchPrefixFallsThrough(t *testing.T) {
-	upstream := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	upstream := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -50,7 +51,7 @@ func TestReverseProxyMiddleware_MatchPrefixFallsThrough(t *testing.T) {
 	})
 
 	nextCalled := false
-	handler := proxyMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := proxyMW(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		nextCalled = true
 		w.WriteHeader(http.StatusTeapot)
 	}))
@@ -80,7 +81,8 @@ func TestReverseProxyMiddleware_MatchPrefixFallsThrough(t *testing.T) {
 
 func newTestServer(t *testing.T, h http.Handler) *httptest.Server {
 	t.Helper()
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Skipf("unable to open listener: %v", err)
 	}

@@ -32,7 +32,7 @@ func TestRouterGenerateTSClient_GeneratesFiles(t *testing.T) {
 	}
 
 	modFile := filepath.Join(outDir, "v1.ts")
-	b, err = os.ReadFile(modFile)
+	b, err = os.ReadFile(filepath.Clean(modFile))
 	if err != nil {
 		t.Fatalf("read module file: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestRouterGenerateTSClient_GeneratesFiles(t *testing.T) {
 		t.Fatalf("generate ts client: %v", genErr)
 	}
 
-	b, err = os.ReadFile(modFile)
+	b, err = os.ReadFile(filepath.Clean(modFile))
 	if err != nil {
 		t.Fatalf("read module file after regenerate: %v", err)
 	}
