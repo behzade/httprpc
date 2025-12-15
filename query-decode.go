@@ -67,24 +67,31 @@ func setFromStrings(v reflect.Value, vals []string) error {
 		return nil
 	}
 
-	// TextUnmarshaler support.
-	if v.CanAddr() {
-		unmarhshaller, ok := v.Addr().Interface().(encoding.TextUnmarshaler)
-		if !ok {
-			return fmt.Errorf("type %s does not implement TextUnmarshaler", v.Type())
-		}
-		if err := unmarhshaller.UnmarshalText([]byte(vals[0])); err != nil {
-			return fmt.Errorf("unmarshal text: %w", err)
-		}
-		return nil
-	}
-
-	switch v.Kind() {
-	case reflect.Pointer:
+	// Handle pointers first so we can allocate and still let pointer types implement TextUnmarshaler.
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
+		if unmarshaler, ok := v.Interface().(encoding.TextUnmarshaler); ok {
+			if err := unmarshaler.UnmarshalText([]byte(vals[0])); err != nil {
+				return fmt.Errorf("unmarshal text: %w", err)
+			}
+			return nil
+		}
 		return setFromStrings(v.Elem(), vals)
+	}
+
+	// TextUnmarshaler support for value types with pointer receivers.
+	if v.CanAddr() {
+		if unmarshaler, ok := v.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			if err := unmarshaler.UnmarshalText([]byte(vals[0])); err != nil {
+				return fmt.Errorf("unmarshal text: %w", err)
+			}
+			return nil
+		}
+	}
+
+	switch v.Kind() {
 	case reflect.String:
 		v.SetString(vals[0])
 		return nil

@@ -15,6 +15,7 @@ import { env } from "@/env";
 import { Client } from "../../lib/api";
 import type {
   CreateProductRequest,
+  ListProductsRequest,
   Product,
   UpdateProductRequest,
 } from "../../lib/api/api";
@@ -36,6 +37,34 @@ const ensureProducts = (resource: string) => {
 
 const normalizeId = (id: Identifier) => String(id);
 
+const normalizeSortDirection = (order: string | undefined) =>
+  order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+const extractQuery = (filter: any): string => {
+  if (filter && typeof filter.q === "string") {
+    return filter.q;
+  }
+  if (filter && typeof filter.query === "string") {
+    return filter.query;
+  }
+  return "";
+};
+
+const mapListParams = (params: Partial<GetListParams>): ListProductsRequest => {
+  const { page = 1, perPage = 25 } = params.pagination ?? {};
+  const sortField = params.sort?.field ?? "name";
+  const sortDirection = normalizeSortDirection(params.sort?.order ?? "ASC");
+  const query = extractQuery(params.filter);
+
+  return {
+    page,
+    per_page: perPage,
+    sort_field: sortField,
+    sort_direction: sortDirection,
+    query,
+  };
+};
+
 const mapProductPayload = (
   id: Identifier | undefined,
   data: Partial<Product>,
@@ -55,20 +84,19 @@ const mapCreatePayload = (data: Partial<Product>): CreateProductRequest => ({
 });
 
 export const dataProvider: DataProvider = {
-  async getList(resource: string, _params: GetListParams) {
+  async getList(resource: string, params: GetListParams) {
     ensureProducts(resource);
-    const res = await client.api.get_api_products_list();
+    const req = mapListParams(params);
+    const res = await client.api.get_api_products_list(req);
     return { data: res.items as any, total: res.total };
   },
 
   async getOne(resource: string, params: GetOneParams) {
     ensureProducts(resource);
-    const res = await client.api.get_api_products_list();
-    const product = res.items.find((item) => item.id === normalizeId(params.id));
-    if (!product) {
-      throw new Error(`Product not found: ${params.id}`);
-    }
-    return { data: product as any };
+    const res = await client.api.get_api_products_get({
+      id: normalizeId(params.id),
+    });
+    return { data: res as any };
   },
 
   async getMany(resource: string, params: GetManyParams) {
@@ -76,16 +104,23 @@ export const dataProvider: DataProvider = {
     if (!params.ids?.length) {
       return { data: [] };
     }
-    const res = await client.api.get_api_products_list();
-    const wanted = new Set(params.ids.map((id) => normalizeId(id)));
+    const wanted = params.ids.map((id) => normalizeId(id));
+    const results = await Promise.all(
+      wanted.map((id) => client.api.get_api_products_get({ id })),
+    );
     return {
-      data: res.items.filter((item: Product) => wanted.has(item.id)) as any,
+      data: results as any,
     };
   },
 
-  async getManyReference(resource: string, _params: GetManyReferenceParams) {
+  async getManyReference(resource: string, params: GetManyReferenceParams) {
     ensureProducts(resource);
-    const res = await client.api.get_api_products_list();
+    const req = mapListParams({
+      filter: params.filter,
+      pagination: params.pagination,
+      sort: params.sort,
+    });
+    const res = await client.api.get_api_products_list(req);
     return { data: res.items as any, total: res.total };
   },
 

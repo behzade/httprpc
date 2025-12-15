@@ -4,8 +4,6 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS'
 
 export interface ClientOptions { baseUrl: string; fetch?: typeof fetch }
 
-export const __httprpc_checksum = {{quote .Checksum}}
-
 export class {{.ClientName}} {
   private readonly baseUrl: string
   private readonly fetchImpl: typeof fetch
@@ -15,8 +13,33 @@ export class {{.ClientName}} {
     this.fetchImpl = opts.fetch ?? fetch
   }
 
-  private async request<TReq, TRes>(method: HttpMethod, path: string, body?: TReq, headers?: Record<string, string>): Promise<TRes> {
-    const url = this.baseUrl + path
+  private buildURL(path: string, query?: unknown): string {
+    if (!query) return this.baseUrl + path
+
+    if (query instanceof URLSearchParams) {
+      const qs = query.toString()
+      return this.baseUrl + path + (qs ? `?${qs}` : '')
+    }
+    if (typeof query !== 'object') return this.baseUrl + path
+
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null) continue
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          if (v === undefined || v === null) continue
+          params.append(key, String(v))
+        }
+        continue
+      }
+      params.set(key, String(value))
+    }
+    const qs = params.toString()
+    return this.baseUrl + path + (qs ? `?${qs}` : '')
+  }
+
+  private async request<TReq, TRes>(method: HttpMethod, path: string, body?: TReq, headers?: Record<string, string>, query?: unknown): Promise<TRes> {
+    const url = this.buildURL(path, query)
     const res = await this.fetchImpl(url, {
       method,
       headers: {
@@ -37,6 +60,11 @@ export class {{.ClientName}} {
 {{- if .HasBody}}
   async {{.MethodName}}(req: {{.ReqType}}): Promise<{{.ResType}}> {
     return this.request<{{.ReqType}}, {{.ResType}}>({{quote .Method}}, {{quote .Path}}, req, { 'Accept': {{quote .Produces}}, 'Content-Type': {{quote .Consumes}} })
+  }
+
+{{- else if .HasParams}}
+  async {{.MethodName}}(req?: {{.ReqType}}): Promise<{{.ResType}}> {
+    return this.request<{{.ReqType}}, {{.ResType}}>({{quote .Method}}, {{quote .Path}}, undefined, { 'Accept': {{quote .Produces}} }, req)
   }
 
 {{- else}}

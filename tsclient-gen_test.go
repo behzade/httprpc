@@ -2,13 +2,14 @@ package httprpc
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
+func TestRouterGenerateTSClient_GeneratesFiles(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "tsclient")
 
 	r := New()
@@ -26,19 +27,24 @@ func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read base.ts: %v", err)
 	}
-	if !strings.Contains(string(b), "export const __httprpc_checksum") {
-		t.Fatalf("expected checksum in base.ts")
+	if !strings.Contains(string(b), "export async function request") {
+		t.Fatalf("expected request helper in base.ts")
 	}
 
-	if _, statErr := os.Stat(filepath.Join(outDir, tsClientChecksumFileName)); statErr != nil {
-		t.Fatalf("expected %s to exist: %v", tsClientChecksumFileName, statErr)
-	}
-
-	sum1, err := readTSClientChecksum(outDir)
+	modFile := filepath.Join(outDir, "v1.ts")
+	b, err = os.ReadFile(modFile)
 	if err != nil {
-		t.Fatalf("read checksum: %v", err)
+		t.Fatalf("read module file: %v", err)
+	}
+	if !strings.Contains(string(b), "async post_v1_ping") {
+		t.Fatalf("expected generated endpoint in module")
 	}
 
+	if _, statErr := os.Stat(filepath.Join(outDir, ".httprpc-checksum")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("checksum file should not be created")
+	}
+
+	// ensure regeneration updates files when routes change
 	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(func(context.Context, struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}, "/v1/ping2"))
@@ -47,11 +53,11 @@ func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 		t.Fatalf("generate ts client: %v", genErr)
 	}
 
-	sum2, err := readTSClientChecksum(outDir)
+	b, err = os.ReadFile(modFile)
 	if err != nil {
-		t.Fatalf("read checksum: %v", err)
+		t.Fatalf("read module file after regenerate: %v", err)
 	}
-	if sum1 == sum2 {
-		t.Fatalf("expected checksum to change when endpoints change")
+	if !strings.Contains(string(b), "async post_v1_ping2") {
+		t.Fatalf("expected regenerated client to include new endpoint")
 	}
 }

@@ -23,6 +23,18 @@ export class {{.ClientName}} {
     )
   }
 
+{{- else if .HasParams}}
+  async {{.MethodName}}(req?: {{.ReqType}}): Promise<{{.ResType}}> {
+    return request<{{.ReqType}}, {{.ResType}}>(
+      this.opts,
+      {{quote .Method}},
+      {{quote .Path}},
+      undefined,
+      { 'Accept': {{quote .Produces}} },
+      req,
+    )
+  }
+
 {{- else}}
   async {{.MethodName}}(): Promise<{{.ResType}}> {
     return request<{{.ReqType}}, {{.ResType}}>(

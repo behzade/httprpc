@@ -52,6 +52,7 @@ type tsEndpointModel struct {
 	Consumes   string
 	Produces   string
 	HasBody    bool
+	HasParams  bool
 }
 
 type tsModel struct {
@@ -59,7 +60,6 @@ type tsModel struct {
 	ClientName  string
 	Endpoints   []tsEndpointModel
 	TypeDefs    []string
-	Checksum    string
 }
 
 //go:embed templates/ts/client.tmpl
@@ -84,7 +84,6 @@ var tsIndexTemplate string
 func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 	opts = opts.withDefaults()
 	meta := r.Metas
-	checksum := tsClientChecksum(meta, opts)
 
 	types := collectTypes(meta)
 	typeNames := assignTypeNames(types)
@@ -110,6 +109,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		reqType := typeNames[deref(m.Req)]
 		resType := typeNames[deref(m.Res)]
 		hasBody := endpointHasBody(m.Method, m.Req)
+		hasParams := endpointHasParams(m.Req)
 
 		endpoints = append(endpoints, tsEndpointModel{
 			Method:     strings.ToUpper(m.Method),
@@ -120,6 +120,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 			Consumes:   firstOr(m.Consumes),
 			Produces:   firstOr(m.Produces),
 			HasBody:    hasBody,
+			HasParams:  hasParams,
 		})
 	}
 	sort.SliceStable(endpoints, func(i, j int) bool {
@@ -141,7 +142,6 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		ClientName:  opts.ClientName,
 		Endpoints:   endpoints,
 		TypeDefs:    typeDefs,
-		Checksum:    checksum,
 	}
 
 	var buf bytes.Buffer
@@ -161,7 +161,6 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
-	checksum := tsClientChecksum(r.Metas, opts)
 
 	// Group endpoints by module segment.
 	modules := map[string][]*EndpointMeta{}
@@ -196,7 +195,6 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := writeTemplate(filepath.Join(dir, "base.ts"), baseTmpl, tsModel{
 		PackageName: opts.PackageName,
 		ClientName:  opts.ClientName,
-		Checksum:    checksum,
 	}); err != nil {
 		return err
 	}
@@ -233,6 +231,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 			reqType := typeNames[deref(m.Req)]
 			resType := typeNames[deref(m.Res)]
 			hasBody := endpointHasBody(m.Method, m.Req)
+			hasParams := endpointHasParams(m.Req)
 			endpoints = append(endpoints, tsEndpointModel{
 				Method:     strings.ToUpper(m.Method),
 				Path:       m.Path,
@@ -242,6 +241,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 				Consumes:   firstOr(m.Consumes),
 				Produces:   firstOr(m.Produces),
 				HasBody:    hasBody,
+				HasParams:  hasParams,
 			})
 		}
 		sort.SliceStable(endpoints, func(i, j int) bool {
@@ -256,7 +256,6 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 			ClientName:  moduleClientClassName(key),
 			Endpoints:   endpoints,
 			TypeDefs:    typeDefs,
-			Checksum:    checksum,
 		}
 
 		file := moduleFileName(key) + ".ts"
@@ -277,7 +276,6 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 	if err := indexTmpl.Execute(&buf, map[string]any{
 		"PackageName": opts.PackageName,
 		"ClientName":  opts.ClientName,
-		"Checksum":    checksum,
 		"Modules":     indexModules,
 	}); err != nil {
 		return fmt.Errorf("execute index template: %w", err)
@@ -286,10 +284,6 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 		return fmt.Errorf("write index file: %w", err)
 	}
 
-	// .httprpc-checksum
-	if err := os.WriteFile(filepath.Join(dir, tsClientChecksumFileName), []byte(checksum+"\n"), filePerm); err != nil {
-		return fmt.Errorf("write checksum file: %w", err)
-	}
 	return nil
 }
 
@@ -549,6 +543,17 @@ func endpointHasBody(method string, req reflect.Type) bool {
 		return false
 	}
 	return hasJSONBody(deref(req))
+}
+
+func endpointHasParams(req reflect.Type) bool {
+	req = deref(req)
+	if req == nil {
+		return false
+	}
+	if req.Kind() == reflect.Struct {
+		return req.NumField() > 0
+	}
+	return true
 }
 
 func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {

@@ -9,10 +9,8 @@ import (
 type Router struct {
 	*EndpointGroup
 
-	tsGenMu       sync.Mutex
-	tsGenLastDir  string
-	tsGenLastHash string
-	tsGenCfg      *TSClientGenConfig
+	tsGenMu  sync.Mutex
+	tsGenCfg *TSClientGenConfig
 }
 
 // New creates a new Router.

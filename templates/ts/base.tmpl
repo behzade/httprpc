@@ -4,18 +4,17 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS'
 
 export interface ClientOptions { baseUrl: string; fetch?: typeof fetch }
 
-export const __httprpc_checksum = {{quote .Checksum}}
-
 export async function request<TReq, TRes>(
   opts: ClientOptions,
   method: HttpMethod,
   path: string,
   body?: TReq,
   headers?: Record<string, string>,
+  query?: unknown,
 ): Promise<TRes> {
   const baseUrl = opts.baseUrl.replace(/\/$/, '')
   const fetchImpl = opts.fetch ?? fetch
-  const url = baseUrl + path
+  const url = buildURL(baseUrl, path, query)
   const res = await fetchImpl(url, {
     method,
     headers: {
@@ -30,4 +29,27 @@ export async function request<TReq, TRes>(
   }
   if (res.status === 204) return undefined as unknown as TRes
   return (await res.json()) as TRes
+}
+
+function buildURL(baseUrl: string, path: string, query?: unknown): string {
+  if (!query) return baseUrl + path
+  if (query instanceof URLSearchParams) {
+    const qs = query.toString()
+    return baseUrl + path + (qs ? `?${qs}` : '')
+  }
+  if (typeof query !== 'object') return baseUrl + path
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        if (v === undefined || v === null) continue
+        params.append(key, String(v))
+      }
+      continue
+    }
+    params.set(key, String(value))
+  }
+  const qs = params.toString()
+  return baseUrl + path + (qs ? `?${qs}` : '')
 }

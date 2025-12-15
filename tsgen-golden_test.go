@@ -52,7 +52,7 @@ func TestTSGenGolden(t *testing.T) {
 	}
 
 	goldenDir := filepath.Join("testdata", "tsgen")
-	wantFiles := []string{tsClientChecksumFileName, "base.ts", "index.ts", "users.ts", "hotels.ts"}
+	wantFiles := []string{"base.ts", "index.ts", "users.ts", "hotels.ts"}
 
 	update := os.Getenv("UPDATE_GOLDEN") != ""
 	if update {

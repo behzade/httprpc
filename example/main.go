@@ -37,7 +37,7 @@ func main() {
 	})
 
 	router.Use(middleware.Recover(nil), httprpc.Priority(100))
-	router.Use(middleware.RequestID(""))
+	router.Use(middleware.RequestID(""), httprpc.Priority(50))
 	router.Use(middleware.Logging(nil))
 	router.Use(middleware.RequestSizeLimit(1 << 20)) // 1MB
 	router.Use(middleware.Timeout(15 * time.Second))

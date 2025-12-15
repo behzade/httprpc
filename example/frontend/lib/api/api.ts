@@ -50,13 +50,14 @@ export interface UpdateProductRequest {
 
 export class ApiClient {
   constructor(private readonly opts: ClientOptions) {}
-  async get_api_echo(): Promise<Echo> {
+  async get_api_echo(req?: Echo): Promise<Echo> {
     return request<Echo, Echo>(
       this.opts,
       "GET",
       "/api/echo",
       undefined,
       { 'Accept': "application/json" },
+      req,
     )
   }
   async get_api_ping(): Promise<Anon> {
@@ -95,22 +96,24 @@ export class ApiClient {
       { 'Accept': "application/json", 'Content-Type': "application/json" },
     )
   }
-  async get_api_products_get(): Promise<Product> {
+  async get_api_products_get(req?: GetProductRequest): Promise<Product> {
     return request<GetProductRequest, Product>(
       this.opts,
       "GET",
       "/api/products/get",
       undefined,
       { 'Accept': "application/json" },
+      req,
     )
   }
-  async get_api_products_list(): Promise<ListProductsResponse> {
+  async get_api_products_list(req?: ListProductsRequest): Promise<ListProductsResponse> {
     return request<ListProductsRequest, ListProductsResponse>(
       this.opts,
       "GET",
       "/api/products/list",
       undefined,
       { 'Accept': "application/json" },
+      req,
     )
   }
 }

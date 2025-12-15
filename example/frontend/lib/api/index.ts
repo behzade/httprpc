@@ -3,7 +3,6 @@
 import type { ClientOptions } from './base'
 export type { ClientOptions, HttpMethod } from './base'
 export { request } from './base'
-export { __httprpc_checksum } from './base'
 import { ApiClient } from './api'
 export { ApiClient } from './api'
 
