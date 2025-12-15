@@ -9,7 +9,8 @@ import (
 
 type statusCodec struct{}
 
-func (statusCodec) Decode(*http.Request) (struct{}, error) { return struct{}{}, nil }
+func (statusCodec) DecodeBody(*http.Request) (struct{}, error)  { return struct{}{}, nil }
+func (statusCodec) DecodeQuery(*http.Request) (struct{}, error) { return struct{}{}, nil }
 func (statusCodec) Encode(w http.ResponseWriter, res int) error {
 	w.WriteHeader(res)
 	return nil
@@ -26,7 +27,10 @@ func TestRouterHandler_DispatchesAndMethodNotAllowed(t *testing.T) {
 		return http.StatusOK, nil
 	}, "/ping"), WithCodec[struct{}, int](statusCodec{}))
 
-	h := r.Handler()
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)

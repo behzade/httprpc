@@ -1,6 +1,7 @@
 package httprpc
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -40,7 +41,7 @@ func applyMiddlewares(h http.Handler, middlewares []*MiddlewareWithPriority) htt
 
 // Handler returns an http.Handler that dispatches to registered endpoints.
 // Current behavior is exact match on r.URL.Path (no templating).
-func (r *Router) Handler() http.Handler {
+func (r *Router) buildHandler() (http.Handler, error) {
 	type methods struct {
 		byMethod map[string]http.Handler
 		allow    string
@@ -58,7 +59,7 @@ func (r *Router) Handler() http.Handler {
 			byPath[e.Path] = m
 		}
 		if _, exists := m.byMethod[e.Method]; exists {
-			panic("duplicate route: " + e.Method + " " + e.Path)
+			return nil, fmt.Errorf("duplicate route: %s %s", e.Method, e.Path)
 		}
 
 		h := e.Handler
@@ -96,7 +97,7 @@ func (r *Router) Handler() http.Handler {
 			return
 		}
 		h.ServeHTTP(w, req)
-	})
+	}), nil
 }
 
 // Describe returns endpoint metadata suitable for generators.

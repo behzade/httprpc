@@ -14,13 +14,14 @@ import (
 	"unicode"
 
 	_ "embed"
+	"net/http"
 )
 
 const (
 	rootModule  = "root"
 	unknownType = "unknown"
 	dirPerm     = 0o755
-	filePerm    = 0o600
+	filePerm    = 0o644
 )
 
 // TSGenOptions configures TypeScript generation.
@@ -108,7 +109,7 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		}
 		reqType := typeNames[deref(m.Req)]
 		resType := typeNames[deref(m.Res)]
-		hasBody := hasJSONBody(deref(m.Req))
+		hasBody := endpointHasBody(m.Method, m.Req)
 
 		endpoints = append(endpoints, tsEndpointModel{
 			Method:     strings.ToUpper(m.Method),
@@ -231,7 +232,7 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 		for _, m := range metas {
 			reqType := typeNames[deref(m.Req)]
 			resType := typeNames[deref(m.Res)]
-			hasBody := hasJSONBody(deref(m.Req))
+			hasBody := endpointHasBody(m.Method, m.Req)
 			endpoints = append(endpoints, tsEndpointModel{
 				Method:     strings.ToUpper(m.Method),
 				Path:       m.Path,
@@ -541,6 +542,13 @@ func hasJSONBody(req reflect.Type) bool {
 		return false
 	}
 	return true
+}
+
+func endpointHasBody(method string, req reflect.Type) bool {
+	if strings.EqualFold(method, http.MethodGet) {
+		return false
+	}
+	return hasJSONBody(deref(req))
 }
 
 func tsTypeExpr(t reflect.Type, typeNames map[reflect.Type]string) string {

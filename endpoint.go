@@ -137,7 +137,7 @@ func RegisterHandler[Req, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opt
 	}
 
 	o := registerOptions[Req, Res]{
-		codec: JSONCodec[Req, Res]{},
+		codec: DefaultCodec[Req, Res]{},
 	}
 	for _, opt := range opts {
 		if opt != nil {

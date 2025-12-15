@@ -15,6 +15,7 @@ import (
 	productdb "github.com/behzade/httprpc/example/internal/adapter/database"
 	httprpcadapter "github.com/behzade/httprpc/example/internal/adapter/httprpc"
 	productcore "github.com/behzade/httprpc/example/internal/core/product"
+	"github.com/behzade/httprpc/middleware"
 )
 
 const (
@@ -34,6 +35,10 @@ func main() {
 	router.SetTSClientGenConfig(&httprpc.TSClientGenConfig{
 		Dir: "./frontend/lib/api",
 	})
+
+	router.Use(middleware.Recover(nil), httprpc.Priority(100))
+	router.Use(middleware.Logging(nil))
+	router.Use(middleware.RequestSizeLimit(1 << 20)) // 1MB
 
 	productRepo := productdb.NewInMemoryProductRepository()
 	productModule := productcore.New(productRepo)
@@ -56,7 +61,7 @@ func main() {
 
 	httprpc.RegisterHandler(
 		apiGroup,
-		httprpc.POST(
+		httprpc.GET(
 			func(_ context.Context, req Echo) (Echo, error) {
 				return req, nil
 			},
@@ -73,7 +78,10 @@ func main() {
 		return
 	}
 
-	apiHandler := router.Handler()
+	apiHandler, err := router.Handler()
+	if err != nil {
+		panic(err)
+	}
 
 	staticFS, err := fs.Sub(embeddedFrontend, "frontend/dist")
 	if err != nil {

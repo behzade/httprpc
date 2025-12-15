@@ -21,11 +21,11 @@ func NewProductHandlers(module *product.Module) *ProductHandlers {
 // HTTP DTOs (only used at the transport layer).
 type (
 	ListProductsRequest struct {
-		Page          int    `json:"page"`
-		PerPage       int    `json:"per_page"`
-		SortField     string `json:"sort_field"`
-		SortDirection string `json:"sort_direction"`
-		Query         string `json:"query"`
+		Page          int    `json:"page" query:"page"`
+		PerPage       int    `json:"per_page" query:"per_page"`
+		SortField     string `json:"sort_field" query:"sort_field"`
+		SortDirection string `json:"sort_direction" query:"sort_direction"`
+		Query         string `json:"query" query:"query"`
 	}
 
 	ListProductsResponse struct {
@@ -34,7 +34,7 @@ type (
 	}
 
 	GetProductRequest struct {
-		ID string `json:"id"`
+		ID string `json:"id" query:"id"`
 	}
 
 	CreateProductRequest struct {
@@ -74,7 +74,7 @@ type (
 func (h *ProductHandlers) Register(api *httprpc.EndpointGroup) {
 	httprpc.RegisterHandler(
 		api,
-		httprpc.POST(
+		httprpc.GET(
 			func(ctx context.Context, req ListProductsRequest) (ListProductsResponse, error) {
 				result, err := h.module.List(ctx, domain.ListProductsInput(req))
 				if err != nil {
@@ -91,7 +91,7 @@ func (h *ProductHandlers) Register(api *httprpc.EndpointGroup) {
 
 	httprpc.RegisterHandler(
 		api,
-		httprpc.POST(
+		httprpc.GET(
 			func(ctx context.Context, req GetProductRequest) (Product, error) {
 				p, err := h.module.Get(ctx, req.ID)
 				if err != nil {

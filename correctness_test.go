@@ -17,7 +17,16 @@ type testCodec[Req any, Res any] struct {
 	encodeErrorCalls int
 }
 
-func (c *testCodec[Req, Res]) Decode(*http.Request) (Req, error) {
+func (c *testCodec[Req, Res]) DecodeBody(*http.Request) (Req, error) {
+	var zero Req
+	c.decodeCalls++
+	if c.decodeErr != nil {
+		return zero, c.decodeErr
+	}
+	return zero, nil
+}
+
+func (c *testCodec[Req, Res]) DecodeQuery(*http.Request) (Req, error) {
 	var zero Req
 	c.decodeCalls++
 	if c.decodeErr != nil {

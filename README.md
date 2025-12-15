@@ -32,9 +32,9 @@ type User struct {
 }
 
 func main() {
-    r := httprpc.NewRouter()
+    r := httprpc.New()
 
-    httprpc.RegisterHandler(r, httprpc.POST(
+    httprpc.RegisterHandler(r.EndpointGroup, httprpc.POST(
         func(ctx context.Context, req CreateUserRequest) (User, error) {
             // Your business logic here
             return User{ID: 1, Name: req.Name, Email: req.Email}, nil
@@ -42,7 +42,7 @@ func main() {
         "/users",
     ))
 
-    http.ListenAndServe(":8080", r.Handler())
+http.ListenAndServe(":8080", r.HandlerMust())
 }
 ```
 
@@ -71,7 +71,10 @@ Supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
 Register endpoints on a router or endpoint group:
 
 ```go
-httprpc.RegisterHandler(router, endpoint)
+httprpc.RegisterHandler(router.EndpointGroup, endpoint)
+// or
+group := router.Group("/api")
+httprpc.RegisterHandler(group, endpoint)
 ```
 
 ### Router
@@ -79,9 +82,9 @@ httprpc.RegisterHandler(router, endpoint)
 The router manages endpoints and provides the HTTP handler:
 
 ```go
-r := httprpc.NewRouter()
+r := httprpc.New()
 // Register endpoints...
-handler := r.Handler()
+handler := r.HandlerMust()
 ```
 
 ### Server
@@ -146,6 +149,8 @@ Groups inherit middleware from parents.
 Codecs handle request/response encoding/decoding. JSON is used by default:
 
 ```go
+// DefaultCodec: JSON bodies, query param decoding for GET.
+// Custom codecs implement DecodeBody/DecodeQuery/Encode/EncodeError.
 httprpc.RegisterHandler(r, endpoint, httprpc.WithCodec[Req, Res](customCodec))
 ```
 
@@ -207,7 +212,7 @@ import (
 )
 
 func main() {
-    r := httprpc.NewRouter()
+    r := httprpc.New()
     // Register your endpoints here
     if err := r.GenTSDir("../client", httprpc.TSGenOptions{}); err != nil {
         log.Fatal(err)

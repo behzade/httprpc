@@ -49,9 +49,11 @@ func (f serverOptionFunc) apply(s *http.Server) { f(s) }
 
 // Server returns a configured http.Server using Router.Handler().
 func (r *Router) Server(addr string, opts ...ServerOption) *http.Server {
+	handler := r.HandlerMust()
+
 	s := &http.Server{
 		Addr:              addr,
-		Handler:           r.Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: defaultReadHeaderTimeout,
 		ReadTimeout:       defaultReadTimeout,
 		WriteTimeout:      defaultWriteTimeout,

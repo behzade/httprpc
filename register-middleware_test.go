@@ -47,7 +47,11 @@ func TestRegisterHandler_TypedMiddlewareOrder(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
-	r.Handler().ServeHTTP(rec, req)
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
 	}
