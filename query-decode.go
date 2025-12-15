@@ -24,7 +24,7 @@ func decodeQueryParams[Req any](r *http.Request) (Req, error) {
 		return req, fmt.Errorf("decode query: request type %s must be a struct", rt.Kind())
 	}
 
-	for i := 0; i < rt.NumField(); i++ {
+	for i := range rt.NumField() {
 		field := rt.Field(i)
 		if !field.IsExported() {
 			continue
@@ -59,8 +59,6 @@ func decodeQueryParams[Req any](r *http.Request) (Req, error) {
 	return req, nil
 }
 
-var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
-
 func setFromStrings(v reflect.Value, vals []string) error {
 	if !v.CanSet() {
 		return fmt.Errorf("field is not settable")
@@ -70,8 +68,15 @@ func setFromStrings(v reflect.Value, vals []string) error {
 	}
 
 	// TextUnmarshaler support.
-	if v.CanAddr() && v.Addr().Type().Implements(textUnmarshalerType) {
-		return v.Addr().Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(vals[0])) //nolint:forcetypeassert
+	if v.CanAddr() {
+		unmarhshaller, ok := v.Addr().Interface().(encoding.TextUnmarshaler)
+		if !ok {
+			return fmt.Errorf("type %s does not implement TextUnmarshaler", v.Type())
+		}
+		if err := unmarhshaller.UnmarshalText([]byte(vals[0])); err != nil {
+			return fmt.Errorf("unmarshal text: %w", err)
+		}
+		return nil
 	}
 
 	switch v.Kind() {
@@ -86,28 +91,28 @@ func setFromStrings(v reflect.Value, vals []string) error {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(vals[0])
 		if err != nil {
-			return err
+			return fmt.Errorf("parse bool: %w", err)
 		}
 		v.SetBool(b)
 		return nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		i, err := strconv.ParseInt(vals[0], 10, v.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("parse int: %w", err)
 		}
 		v.SetInt(i)
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		u, err := strconv.ParseUint(vals[0], 10, v.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("parse uint: %w", err)
 		}
 		v.SetUint(u)
 		return nil
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(vals[0], v.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("parse float: %w", err)
 		}
 		v.SetFloat(f)
 		return nil
@@ -129,7 +134,7 @@ func setFromStrings(v reflect.Value, vals []string) error {
 		if v.Type().PkgPath() == "time" && v.Type().Name() == "Time" {
 			tm, err := time.Parse(time.RFC3339, vals[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("parse time: %w", err)
 			}
 			v.Set(reflect.ValueOf(tm))
 			return nil

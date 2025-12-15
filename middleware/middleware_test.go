@@ -41,7 +41,7 @@ func TestLoggingMiddleware(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{AddSource: false}))
 
-	h := Logging(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Logging(logger)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("ok"))
 	}))
@@ -78,7 +78,7 @@ func TestTimeoutMiddleware(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 
-	h := Timeout(10 * time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Timeout(10 * time.Millisecond)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		if deadline, ok := r.Context().Deadline(); !ok || deadline.IsZero() {
 			t.Fatalf("expected deadline to be set")
 		}
@@ -114,7 +114,7 @@ func TestCORSMiddleware(t *testing.T) {
 		AllowCredentials: true,
 		MaxAgeSeconds:    3600,
 	}
-	h := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := CORS(cfg)(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Fatalf("should not reach handler on OPTIONS")
 	}))
 	h.ServeHTTP(rec, req)

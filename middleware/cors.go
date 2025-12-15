@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware utilities for the httprpc framework.
 package middleware
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/behzade/httprpc"
 )
 
-// CORS provides a simple, configurable CORS middleware.
+// CORSConfig configures CORS behavior.
 // For production, adjust the allowed origins and methods to your needs.
 type CORSConfig struct {
 	AllowedOrigins   []string

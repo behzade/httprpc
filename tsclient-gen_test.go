@@ -43,8 +43,8 @@ func TestRouterGenerateTSClient_UsesChecksum(t *testing.T) {
 		return struct{}{}, nil
 	}, "/v1/ping2"))
 
-	if err := r.GenerateTSClient(); err != nil {
-		t.Fatalf("generate ts client: %v", err)
+	if genErr := r.GenerateTSClient(); genErr != nil {
+		t.Fatalf("generate ts client: %v", genErr)
 	}
 
 	sum2, err := readTSClientChecksum(outDir)

@@ -41,6 +41,7 @@ func adaptHandler[Req, Res any](codec Codec[Req, Res], handler Handler[Req, Res]
 		if err != nil {
 			slog.Error("failed to encode response", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 	})
 }

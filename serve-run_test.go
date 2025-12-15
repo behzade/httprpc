@@ -47,9 +47,9 @@ func TestRunServerOptions(t *testing.T) {
 	})
 }
 
-func TestRunServerGracefulShutdownEnabled(t *testing.T) {
+func TestRunServerGracefulShutdownEnabled(_ *testing.T) {
 	r := New()
-	RegisterHandler(r.EndpointGroup, GET(func(ctx context.Context, req struct{}) (struct{}, error) {
+	RegisterHandler(r.EndpointGroup, GET(func(_ context.Context, _ struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}, "/test"))
 
@@ -91,7 +91,7 @@ func TestServerOptionCompatibility(t *testing.T) {
 	// Ensure ServerOption and RunServerOption are separate types
 	// and don't conflict
 	r := New()
-	RegisterHandler(r.EndpointGroup, GET(func(ctx context.Context, req struct{}) (struct{}, error) {
+	RegisterHandler(r.EndpointGroup, GET(func(_ context.Context, _ struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}, "/test"))
 

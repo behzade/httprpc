@@ -3,6 +3,7 @@ package httprpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -149,7 +150,10 @@ func (r *Router) RunServer(addr string, opts ...RunServerOption) error {
 
 	if !cfg.gracefulShutdown {
 		cfg.logger.Info("starting http server", "addr", server.Addr)
-		return server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil {
+			return fmt.Errorf("listen and serve: %w", err)
+		}
+		return nil
 	}
 
 	// Channel to receive server errors
@@ -169,7 +173,7 @@ func (r *Router) RunServer(addr string, opts ...RunServerOption) error {
 
 	select {
 	case err := <-serverErrors:
-		return err
+		return fmt.Errorf("server error: %w", err)
 	case sig := <-quit:
 		cfg.logger.Info("received shutdown signal", "signal", sig.String())
 	}
@@ -181,7 +185,7 @@ func (r *Router) RunServer(addr string, opts ...RunServerOption) error {
 	cfg.logger.Info("shutting down server gracefully", "timeout", cfg.shutdownTimeout)
 	if err := server.Shutdown(ctx); err != nil {
 		cfg.logger.Error("server shutdown failed", "error", err)
-		return err
+		return fmt.Errorf("server shutdown: %w", err)
 	}
 
 	cfg.logger.Info("server stopped")

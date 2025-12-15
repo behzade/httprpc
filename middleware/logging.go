@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 type responseRecorder struct {
 	http.ResponseWriter
+
 	status int
 	bytes  int
 }
@@ -28,7 +30,10 @@ func (rw *responseRecorder) Write(p []byte) (int, error) {
 	}
 	n, err := rw.ResponseWriter.Write(p)
 	rw.bytes += n
-	return n, err
+	if err != nil {
+		return n, fmt.Errorf("write response: %w", err)
+	}
+	return n, nil
 }
 
 // Logging logs request/response metadata using slog.
