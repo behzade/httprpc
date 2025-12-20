@@ -23,7 +23,7 @@ type BenchRes struct {
 }
 
 // httprpc handler
-func benchHandler(ctx context.Context, req BenchReq) (BenchRes, error) {
+func benchHandler(_ context.Context, req BenchReq) (BenchRes, error) {
 	return BenchRes{
 		Message: "Hello, " + req.Name,
 		UserID:  12345,
@@ -35,11 +35,13 @@ func benchHandler(ctx context.Context, req BenchReq) (BenchRes, error) {
 func benchNetHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	var req BenchReq
 	if r.Body != nil {
-		defer r.Body.Close()
+		defer func() { _ = r.Body.Close() }()
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			if encodeErr := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); encodeErr != nil {
+				return
+			}
 			return
 		}
 	}
@@ -53,14 +55,16 @@ func benchNetHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		if encodeErr := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); encodeErr != nil {
+			return
+		}
 	}
 }
 
 // Raw net/http handler (minimal work - just for baseline comparison)
-func benchRawNetHTTPHandler(w http.ResponseWriter, r *http.Request) {
+func benchRawNetHTTPHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 // ============================================================================
@@ -82,7 +86,7 @@ func BenchmarkHTTPRPC_POST_JSON(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -104,7 +108,7 @@ func BenchmarkNetHTTP_POST_JSON(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -126,7 +130,7 @@ func BenchmarkNetHTTP_POST_RAW(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -154,7 +158,7 @@ func BenchmarkHTTPRPC_GET_Query(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/api/user?name=John+Doe&email=john@example.com&age=30", http.NoBody)
 		handler.ServeHTTP(rec, req)
@@ -181,13 +185,15 @@ func BenchmarkNetHTTP_GET_Query(b *testing.B) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	})
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/api/user?name=John+Doe&email=john@example.com&age=30", http.NoBody)
 		mux.ServeHTTP(rec, req)
@@ -205,7 +211,7 @@ func BenchmarkNetHTTP_GET_Query(b *testing.B) {
 // This measures JUST the routing overhead (no JSON work)
 func BenchmarkHTTPRPC_Overhead_Routing(b *testing.B) {
 	r := New()
-	emptyHandler := func(ctx context.Context, req struct{}) (struct{}, error) {
+	emptyHandler := func(_ context.Context, _ struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}
 	RegisterHandler[struct{}, struct{}](r.EndpointGroup, POST(emptyHandler, "/api/ping"))
@@ -218,7 +224,7 @@ func BenchmarkHTTPRPC_Overhead_Routing(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/ping", http.NoBody)
 		handler.ServeHTTP(rec, req)
@@ -227,14 +233,14 @@ func BenchmarkHTTPRPC_Overhead_Routing(b *testing.B) {
 
 func BenchmarkNetHTTP_Overhead_Routing(b *testing.B) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/ping", http.NoBody)
 		mux.ServeHTTP(rec, req)
@@ -249,7 +255,7 @@ func BenchmarkHTTPRPC_MultipleRoutes(b *testing.B) {
 	r := New()
 
 	// Register 10 different routes
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		path := "/api/endpoint" + string(rune('0'+i))
 		RegisterHandler[BenchReq, BenchRes](r.EndpointGroup, POST(benchHandler, path))
 	}
@@ -264,7 +270,7 @@ func BenchmarkHTTPRPC_MultipleRoutes(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/endpoint5", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -280,7 +286,7 @@ func BenchmarkNetHTTP_MultipleRoutes(b *testing.B) {
 	mux := http.NewServeMux()
 
 	// Register 10 different routes
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		path := "/api/endpoint" + string(rune('0'+i))
 		mux.HandleFunc(path, benchNetHTTPHandler)
 	}
@@ -290,7 +296,7 @@ func BenchmarkNetHTTP_MultipleRoutes(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/endpoint5", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -329,7 +335,7 @@ func BenchmarkHTTPRPC_WithMiddleware(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -358,7 +364,7 @@ func BenchmarkNetHTTP_WithMiddleware(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -389,7 +395,7 @@ func BenchmarkHTTPRPC_ErrorHandling(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -411,7 +417,7 @@ func BenchmarkNetHTTP_ErrorHandling(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/user", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -436,7 +442,7 @@ type LargeRes struct {
 	Total   int        `json:"total"`
 }
 
-func largeBenchHandler(ctx context.Context, req LargeReq) (LargeRes, error) {
+func largeBenchHandler(_ context.Context, req LargeReq) (LargeRes, error) {
 	results := make([]BenchRes, len(req.Items))
 	for i, item := range req.Items {
 		results[i] = BenchRes{
@@ -469,12 +475,15 @@ func BenchmarkHTTPRPC_LargePayload(b *testing.B) {
 			Age:   20 + i%50,
 		}
 	}
-	reqBody, _ := json.Marshal(LargeReq{Items: items})
+	reqBody, err := json.Marshal(LargeReq{Items: items})
+	if err != nil {
+		b.Fatalf("marshal request: %v", err)
+	}
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/batch", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -490,7 +499,7 @@ func BenchmarkNetHTTP_LargePayload(b *testing.B) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/batch", func(w http.ResponseWriter, r *http.Request) {
 		var req LargeReq
-		defer r.Body.Close()
+		defer func() { _ = r.Body.Close() }()
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -506,10 +515,12 @@ func BenchmarkNetHTTP_LargePayload(b *testing.B) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(LargeRes{
+		if encodeErr := json.NewEncoder(w).Encode(LargeRes{
 			Results: results,
 			Total:   len(results),
-		})
+		}); encodeErr != nil {
+			return
+		}
 	})
 
 	// Create a payload with 100 items
@@ -521,12 +532,15 @@ func BenchmarkNetHTTP_LargePayload(b *testing.B) {
 			Age:   20 + i%50,
 		}
 	}
-	reqBody, _ := json.Marshal(LargeReq{Items: items})
+	reqBody, err := json.Marshal(LargeReq{Items: items})
+	if err != nil {
+		b.Fatalf("marshal request: %v", err)
+	}
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/batch", bytes.NewReader(reqBody))
 		req.Header.Set("Content-Type", "application/json")

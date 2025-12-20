@@ -1,5 +1,4 @@
-.gocache/
-.gomodcache/
+.cache/
 
 # Golden outputs for manual inspection (regenerate via UPDATE_GOLDEN=1)
 testdata/tsgen/

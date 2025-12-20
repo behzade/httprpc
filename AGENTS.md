@@ -3,6 +3,7 @@
 ## Conventions
 - Filenames use hyphens (`-`) as separators; only `_test.go` uses underscores.
 - Keep code minimal and composable; prefer `http.Handler` as the primary serving output, with an optional `http.Server` convenience wrapper.
+- All Go toolchain usage must go through Devbox: use `devbox run <script>` when available, or `devbox run -- go <command>` for arbitrary Go commands.
 
 ## Routing / registration model
 - Typed handlers: `Handler[Req, Res]` is always `ctx, req -> (res, err)` and carries no extra metadata.
@@ -27,6 +28,5 @@
 
 ## Tests / inspection
 - Golden-style TS snapshots can be generated for manual inspection with:
-  - `UPDATE_GOLDEN=1 go test ./... -run TestTSGenGolden`
+  - `UPDATE_GOLDEN=1 devbox run -- go test ./... -run TestTSGenGolden`
 - Local Go caches are expected to be set via env vars (`GOCACHE`, `GOMODCACHE`) when running in restricted environments; repo includes `.gocache/` and `.gomodcache/` patterns in `.gitignore`.
-

@@ -128,7 +128,8 @@ func (p *routePattern) match(path string) pathParamMatch {
 }
 
 func pathParamName(segment string) (string, bool) {
-	if len(segment) < 2 {
+	const minPathParamSegmentLen = 2
+	if len(segment) < minPathParamSegmentLen {
 		return "", false
 	}
 	if !strings.HasPrefix(segment, ":") {

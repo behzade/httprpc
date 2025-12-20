@@ -136,7 +136,7 @@ func TestRouterHandler_PathParams(t *testing.T) {
 	}
 
 	r := New()
-	RegisterHandlerWithMeta[userReq, userMeta, userRes](r.EndpointGroup, GETM(func(ctx context.Context, req userReq, meta userMeta) (userRes, error) {
+	RegisterHandlerM[userReq, userMeta, userRes](r.EndpointGroup, GETM(func(_ context.Context, req userReq, meta userMeta) (userRes, error) {
 		return userRes{ID: meta.ID, QueryID: req.ID, Param: strconv.Itoa(meta.ID)}, nil
 	}, "/users/:id"))
 
@@ -180,7 +180,7 @@ func TestRouterHandler_MetaHeaders(t *testing.T) {
 	}
 
 	r := New()
-	RegisterHandlerWithMeta[req, meta, res](r.EndpointGroup, GETM(func(ctx context.Context, req req, meta meta) (res, error) {
+	RegisterHandlerM[req, meta, res](r.EndpointGroup, GETM(func(_ context.Context, req req, meta meta) (res, error) {
 		return res{Auth: meta.Auth, Name: req.Name}, nil
 	}, "/me"))
 

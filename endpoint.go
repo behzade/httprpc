@@ -178,9 +178,10 @@ type registerOptionsWithMeta[Req, Meta, Res any] struct {
 
 type registerOptionWithMetaFunc[Req, Meta, Res any] func(*registerOptionsWithMeta[Req, Meta, Res])
 
+//nolint:unused // interface method
 func (f registerOptionWithMetaFunc[Req, Meta, Res]) apply(o *registerOptionsWithMeta[Req, Meta, Res]) {
 	f(o)
-} //nolint:unused // interface method
+}
 
 // WithCodec sets the codec for the handler.
 func WithCodec[Req, Res any](codec Codec[Req, Res]) RegisterOption[Req, Res] {
@@ -281,8 +282,8 @@ func RegisterHandler[Req, Res any](eg *EndpointGroup, in Endpoint[Req, Res], opt
 	})
 }
 
-// RegisterHandlerWithMeta registers an endpoint with typed metadata.
-func RegisterHandlerWithMeta[Req, Meta, Res any](eg *EndpointGroup, in EndpointWithMeta[Req, Meta, Res], opts ...RegisterOptionWithMeta[Req, Meta, Res]) {
+// RegisterHandlerM registers an endpoint with typed metadata.
+func RegisterHandlerM[Req, Meta, Res any](eg *EndpointGroup, in EndpointWithMeta[Req, Meta, Res], opts ...RegisterOptionWithMeta[Req, Meta, Res]) {
 	root := eg.root
 	if root == nil {
 		root = eg

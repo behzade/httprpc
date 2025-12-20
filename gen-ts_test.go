@@ -99,7 +99,7 @@ func TestRouterGenTS_EmitsHeaderParams(t *testing.T) {
 	}
 
 	r := New()
-	RegisterHandlerWithMeta(r.EndpointGroup, GETM(func(context.Context, getUserReq, getUserMeta) (getUserRes, error) {
+	RegisterHandlerM(r.EndpointGroup, GETM(func(context.Context, getUserReq, getUserMeta) (getUserRes, error) {
 		return getUserRes{}, nil
 	}, "/users/:id"))
 

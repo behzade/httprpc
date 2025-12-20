@@ -8,6 +8,7 @@
   ],
   "env": {
     "GOTOOLCHAIN":         "local",
+    "GOCACHE":             "$PWD/.cache/go",
     "CASSANDRA_CONF":      "$PWD/devbox.d/cassandra",
     "GOROOT":              ""
   },
@@ -17,6 +18,8 @@
     ],
     "scripts": {
       "lint": ["GOFLAGS=-buildvcs=false GOMEMLIMIT=4096MiB golangci-lint run --color always --max-issues-per-linter 100"],
+      "test": ["go test ./..."],
+      "test:bench": ["go test -bench=. -benchmem ./..."],
       "fmt": ["golangci-lint fmt"],
       "example:gen": ["sh -c 'set -euo pipefail; cd example && go run . -gen'"],
       "example:run": ["sh -c 'set -euo pipefail; export CI=true; cd example/frontend && pnpm install --frozen-lockfile && pnpm build; cd .. && go build . && ./example'"],

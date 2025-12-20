@@ -72,7 +72,7 @@ endpoint := httprpc.POST(handler, "/path")
 
 Supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
 
-For meta-aware handlers, use `GETWithMeta`/`POSTWithMeta` and `RegisterHandlerWithMeta`.
+For meta-aware handlers, use `GETM`/`POSTM` and `RegisterHandlerM`.
 
 ### Path params
 
@@ -83,7 +83,7 @@ type GetUserMeta struct {
 	ID int `path:"id"`
 }
 
-httprpc.RegisterHandlerWithMeta(router.EndpointGroup, httprpc.GETWithMeta(
+httprpc.RegisterHandlerM(router.EndpointGroup, httprpc.GETM(
 	func(ctx context.Context, _ struct{}, meta GetUserMeta) (User, error) {
 		return userService.Get(ctx, meta.ID)
 	},
@@ -101,7 +101,7 @@ type AuthMeta struct {
 	RequestID     string `header:"x-request-id,omitempty"`
 }
 
-httprpc.RegisterHandlerWithMeta(router.EndpointGroup, httprpc.GETWithMeta(
+httprpc.RegisterHandlerM(router.EndpointGroup, httprpc.GETM(
 	func(ctx context.Context, _ struct{}, meta AuthMeta) (User, error) {
 		return userService.GetAuthorized(ctx, meta.Authorization)
 	},
@@ -122,7 +122,7 @@ group := router.Group("/api")
 httprpc.RegisterHandler(group, endpoint)
 ```
 
-For meta-aware endpoints, use `RegisterHandlerWithMeta`.
+For meta-aware endpoints, use `RegisterHandlerM`.
 
 ### Router
 
@@ -210,7 +210,7 @@ httprpc.RegisterHandler(r, endpoint, httprpc.WithMiddleware[Req, Res](func(next 
 For meta-aware handlers, use `WithMetaMiddleware` and `HandlerWithMeta`:
 
 ```go
-httprpc.RegisterHandlerWithMeta(r, endpoint, httprpc.WithMetaMiddleware[Req, Meta, Res](func(next httprpc.HandlerWithMeta[Req, Meta, Res]) httprpc.HandlerWithMeta[Req, Meta, Res] {
+httprpc.RegisterHandlerM(r, endpoint, httprpc.WithMetaMiddleware[Req, Meta, Res](func(next httprpc.HandlerWithMeta[Req, Meta, Res]) httprpc.HandlerWithMeta[Req, Meta, Res] {
 	return func(ctx context.Context, req Req, meta Meta) (Res, error) {
 		// Typed middleware logic with meta
 		return next(ctx, req, meta)
@@ -247,7 +247,7 @@ Implement the `Codec[Req, Res]` interface for custom codecs.
 For meta-aware handlers:
 
 ```go
-httprpc.RegisterHandlerWithMeta(r, endpoint, httprpc.WithCodecWithMeta[Req, Meta, Res](customCodec))
+httprpc.RegisterHandlerM(r, endpoint, httprpc.WithCodecWithMeta[Req, Meta, Res](customCodec))
 ```
 
 ## Error Handling
@@ -338,6 +338,20 @@ if err := r.GenerateTSClient(); err != nil {
 
 - Go 1.25.4 or later
 - JSON tags on struct fields must be snake_case (e.g., `json:"field_name"`)
+
+## Development
+
+This repo uses Devbox to manage the toolchain (Go, golangci-lint, Node, pnpm).
+
+Use `devbox shell` for an interactive dev environment, or run scripts directly:
+
+- `devbox run lint`: Run golangci-lint with repo settings.
+- `devbox run fmt`: Format Go code via golangci-lint fmt.
+- `devbox run test`: Run Go tests.
+- `devbox run test:bench`: Run Go benchmarks.
+- `devbox run example:gen`: Generate the example client (`example`, `go run . -gen`).
+- `devbox run example:run`: Build the example frontend and run the server.
+- `devbox run example:dev`: Start the example frontend dev server and run the backend against it.
 
 ## License
 
