@@ -55,3 +55,64 @@ func TestRouterGenTS_EmitsClientAndTypes(t *testing.T) {
 		t.Fatalf("expected route literal")
 	}
 }
+
+func TestRouterGenTS_EmitsPathParams(t *testing.T) {
+	type getUserReq struct {
+		ID int `json:"id"`
+	}
+	type getUserRes struct {
+		ID int `json:"id"`
+	}
+
+	r := New()
+	RegisterHandler(r.EndpointGroup, GET(func(context.Context, getUserReq) (getUserRes, error) {
+		return getUserRes{}, nil
+	}, "/users/:id"))
+
+	outDir := t.TempDir()
+	if err := r.GenTSDir(outDir, TSGenOptions{PackageName: "httprpc-test", ClientName: "API"}); err != nil {
+		t.Fatalf("GenTSDir error: %v", err)
+	}
+
+	mod, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "users.ts")))
+	if err != nil {
+		t.Fatalf("read users.ts: %v", err)
+	}
+	if !strings.Contains(string(mod), "params: {id: string | number }") {
+		t.Fatalf("expected path params signature in generated client")
+	}
+	if !strings.Contains(string(mod), "/users/:id") {
+		t.Fatalf("expected path template in generated client")
+	}
+}
+
+func TestRouterGenTS_EmitsHeaderParams(t *testing.T) {
+	type getUserReq struct {
+		ID int `json:"id"`
+	}
+	type getUserMeta struct {
+		Auth      string `header:"authorization"`
+		RequestID string `header:"x-request-id,omitempty"`
+	}
+	type getUserRes struct {
+		ID int `json:"id"`
+	}
+
+	r := New()
+	RegisterHandlerWithMeta(r.EndpointGroup, GETM(func(context.Context, getUserReq, getUserMeta) (getUserRes, error) {
+		return getUserRes{}, nil
+	}, "/users/:id"))
+
+	outDir := t.TempDir()
+	if err := r.GenTSDir(outDir, TSGenOptions{PackageName: "httprpc-test", ClientName: "API"}); err != nil {
+		t.Fatalf("GenTSDir error: %v", err)
+	}
+
+	mod, err := os.ReadFile(filepath.Clean(filepath.Join(outDir, "users.ts")))
+	if err != nil {
+		t.Fatalf("read users.ts: %v", err)
+	}
+	if !strings.Contains(string(mod), "headers: {authorization: string, \"x-request-id\"?: string }") {
+		t.Fatalf("expected headers signature in generated client")
+	}
+}

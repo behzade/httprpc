@@ -56,6 +56,12 @@ Handlers are typed functions that take a context and a request type, returning a
 type Handler[Req any, Res any] func(ctx context.Context, request Req) (Res, error)
 ```
 
+For endpoints that need typed path/header metadata, use `HandlerWithMeta`:
+
+```go
+type HandlerWithMeta[Req any, Meta any, Res any] func(ctx context.Context, request Req, meta Meta) (Res, error)
+```
+
 ### Endpoints
 
 Endpoints combine a handler with an HTTP method and path:
@@ -65,6 +71,45 @@ endpoint := httprpc.POST(handler, "/path")
 ```
 
 Supported methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD.
+
+For meta-aware handlers, use `GETWithMeta`/`POSTWithMeta` and `RegisterHandlerWithMeta`.
+
+### Path params
+
+You can register routes with path parameters using `:name` segments (snake_case):
+
+```go
+type GetUserMeta struct {
+	ID int `path:"id"`
+}
+
+httprpc.RegisterHandlerWithMeta(router.EndpointGroup, httprpc.GETWithMeta(
+	func(ctx context.Context, _ struct{}, meta GetUserMeta) (User, error) {
+		return userService.Get(ctx, meta.ID)
+	},
+	"/users/:id",
+))
+```
+
+Path parameters are decoded into the meta struct using the `path` tag (snake_case). They are not merged into the request body/query. You can also read them directly via `httprpc.PathParam(ctx, "id")` if you need access in untyped middleware.
+
+Meta structs can also decode headers:
+
+```go
+type AuthMeta struct {
+	Authorization string `header:"authorization"`
+	RequestID     string `header:"x-request-id,omitempty"`
+}
+
+httprpc.RegisterHandlerWithMeta(router.EndpointGroup, httprpc.GETWithMeta(
+	func(ctx context.Context, _ struct{}, meta AuthMeta) (User, error) {
+		return userService.GetAuthorized(ctx, meta.Authorization)
+	},
+	"/me",
+))
+```
+
+Header fields without `omitempty` are required; missing headers return `400 Bad Request`.
 
 ### Registration
 
@@ -76,6 +121,8 @@ httprpc.RegisterHandler(router.EndpointGroup, endpoint)
 group := router.Group("/api")
 httprpc.RegisterHandler(group, endpoint)
 ```
+
+For meta-aware endpoints, use `RegisterHandlerWithMeta`.
 
 ### Router
 
@@ -160,6 +207,17 @@ httprpc.RegisterHandler(r, endpoint, httprpc.WithMiddleware[Req, Res](func(next 
 }))
 ```
 
+For meta-aware handlers, use `WithMetaMiddleware` and `HandlerWithMeta`:
+
+```go
+httprpc.RegisterHandlerWithMeta(r, endpoint, httprpc.WithMetaMiddleware[Req, Meta, Res](func(next httprpc.HandlerWithMeta[Req, Meta, Res]) httprpc.HandlerWithMeta[Req, Meta, Res] {
+	return func(ctx context.Context, req Req, meta Meta) (Res, error) {
+		// Typed middleware logic with meta
+		return next(ctx, req, meta)
+	}
+}))
+```
+
 ## Endpoint Groups
 
 Organize endpoints with groups and prefixes:
@@ -186,6 +244,12 @@ httprpc.RegisterHandler(r, endpoint, httprpc.WithCodec[Req, Res](customCodec))
 
 Implement the `Codec[Req, Res]` interface for custom codecs.
 
+For meta-aware handlers:
+
+```go
+httprpc.RegisterHandlerWithMeta(r, endpoint, httprpc.WithCodecWithMeta[Req, Meta, Res](customCodec))
+```
+
 ## Error Handling
 
 Use `StatusError` to return HTTP status codes:
@@ -199,6 +263,7 @@ Decode failures automatically return 400 Bad Request.
 ## TypeScript Client Generation
 
 Generate TypeScript clients from registered endpoints.
+Path params come from route patterns, and header tags on meta structs become typed `headers` parameters in the generated client.
 
 ### Single File
 

@@ -44,15 +44,24 @@ func (o TSGenOptions) withDefaults() TSGenOptions {
 }
 
 type tsEndpointModel struct {
-	Method     string
-	Path       string
-	MethodName string
-	ReqType    string
-	ResType    string
-	Consumes   string
-	Produces   string
-	HasBody    bool
-	HasParams  bool
+	Method          string
+	Path            string
+	MethodName      string
+	ReqType         string
+	ResType         string
+	Consumes        string
+	Produces        string
+	HasBody         bool
+	HasParams       bool
+	ParamSegments   []string
+	HeaderFields    []tsHeaderField
+	HeadersRequired bool
+}
+
+type tsHeaderField struct {
+	Key      string
+	Type     string
+	Optional bool
 }
 
 type tsModel struct {
@@ -111,16 +120,27 @@ func (r *Router) GenTS(w io.Writer, opts TSGenOptions) error {
 		hasBody := endpointHasBody(m.Method, m.Req)
 		hasParams := endpointHasParams(m.Req)
 
+		segments, err := pathParamSegments(m.Path)
+		if err != nil {
+			return err
+		}
+		headerFields, headersRequired, err := metaHeaderFields(m.Meta, typeNames)
+		if err != nil {
+			return err
+		}
 		endpoints = append(endpoints, tsEndpointModel{
-			Method:     strings.ToUpper(m.Method),
-			Path:       m.Path,
-			MethodName: endpointMethodName(m.Method, m.Path),
-			ReqType:    reqType,
-			ResType:    resType,
-			Consumes:   firstOr(m.Consumes),
-			Produces:   firstOr(m.Produces),
-			HasBody:    hasBody,
-			HasParams:  hasParams,
+			Method:          strings.ToUpper(m.Method),
+			Path:            m.Path,
+			MethodName:      endpointMethodName(m.Method, m.Path),
+			ReqType:         reqType,
+			ResType:         resType,
+			Consumes:        firstOr(m.Consumes),
+			Produces:        firstOr(m.Produces),
+			HasBody:         hasBody,
+			HasParams:       hasParams,
+			ParamSegments:   segments,
+			HeaderFields:    headerFields,
+			HeadersRequired: headersRequired,
 		})
 	}
 	sort.SliceStable(endpoints, func(i, j int) bool {
@@ -232,16 +252,27 @@ func (r *Router) GenTSDir(dir string, opts TSGenOptions) error {
 			resType := typeNames[deref(m.Res)]
 			hasBody := endpointHasBody(m.Method, m.Req)
 			hasParams := endpointHasParams(m.Req)
+			segments, err := pathParamSegments(m.Path)
+			if err != nil {
+				return err
+			}
+			headerFields, headersRequired, err := metaHeaderFields(m.Meta, typeNames)
+			if err != nil {
+				return err
+			}
 			endpoints = append(endpoints, tsEndpointModel{
-				Method:     strings.ToUpper(m.Method),
-				Path:       m.Path,
-				MethodName: endpointMethodName(m.Method, m.Path),
-				ReqType:    reqType,
-				ResType:    resType,
-				Consumes:   firstOr(m.Consumes),
-				Produces:   firstOr(m.Produces),
-				HasBody:    hasBody,
-				HasParams:  hasParams,
+				Method:          strings.ToUpper(m.Method),
+				Path:            m.Path,
+				MethodName:      endpointMethodName(m.Method, m.Path),
+				ReqType:         reqType,
+				ResType:         resType,
+				Consumes:        firstOr(m.Consumes),
+				Produces:        firstOr(m.Produces),
+				HasBody:         hasBody,
+				HasParams:       hasParams,
+				ParamSegments:   segments,
+				HeaderFields:    headerFields,
+				HeadersRequired: headersRequired,
 			})
 		}
 		sort.SliceStable(endpoints, func(i, j int) bool {
@@ -446,11 +477,89 @@ func endpointMethodName(method, path string) string {
 	name = strings.ReplaceAll(name, "-", "_")
 	name = strings.ReplaceAll(name, "{", "")
 	name = strings.ReplaceAll(name, "}", "")
+	name = strings.ReplaceAll(name, ":", "")
 	name = sanitizeIdent(name)
 	if name == "" {
 		return "call"
 	}
 	return name
+}
+
+func pathParamSegments(path string) ([]string, error) {
+	pattern, err := parseRoutePattern(path)
+	if err != nil {
+		return nil, fmt.Errorf("parse path %q: %w", path, err)
+	}
+	if len(pattern.params) == 0 {
+		return nil, nil
+	}
+	return append([]string(nil), pattern.params...), nil
+}
+
+func metaHeaderFields(meta reflect.Type, typeNames map[reflect.Type]string) ([]tsHeaderField, bool, error) {
+	meta = deref(meta)
+	if meta == nil {
+		return nil, false, nil
+	}
+	if meta.Kind() != reflect.Struct {
+		return nil, false, fmt.Errorf("meta type %s must be a struct", meta.Kind())
+	}
+
+	var fields []tsHeaderField
+	required := false
+	for i := range meta.NumField() {
+		field := meta.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		if field.Anonymous && deref(field.Type).Kind() == reflect.Struct {
+			continue
+		}
+
+		tag, err := parseMetaTag(meta, field, "header", false)
+		if err != nil {
+			return nil, false, err
+		}
+		if !tag.found || tag.skip {
+			continue
+		}
+
+		fields = append(fields, tsHeaderField{
+			Key:      tsObjectKey(tag.name),
+			Type:     tsTypeExpr(field.Type, typeNames),
+			Optional: tag.omitempty,
+		})
+		if !tag.omitempty {
+			required = true
+		}
+	}
+	if len(fields) == 0 {
+		return nil, false, nil
+	}
+	return fields, required, nil
+}
+
+func tsObjectKey(s string) string {
+	if isTSIdentifier(s) {
+		return s
+	}
+	return strconv.Quote(s)
+}
+
+func isTSIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if r == '_' || r == '$' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+			continue
+		}
+		if i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func sanitizeIdent(s string) string {

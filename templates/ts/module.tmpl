@@ -13,36 +13,82 @@ export class {{.ClientName}} {
 
 {{- range .Endpoints}}
 {{- if .HasBody}}
-  async {{.MethodName}}(req: {{.ReqType}}): Promise<{{.ResType}}> {
+  async {{.MethodName}}(
+    req: {{.ReqType}},
+{{- if .ParamSegments}}
+    params: { {{- range $i, $seg := .ParamSegments}}{{if $i}}, {{end}}{{$seg}}: string | number{{- end}} },
+{{- end}}
+{{- if .HeaderFields}}
+    headers{{if not .HeadersRequired}}?{{end}}: { {{- range $i, $field := .HeaderFields}}{{if $i}}, {{end}}{{$field.Key}}{{if $field.Optional}}?{{end}}: {{$field.Type}}{{- end}} },
+{{- end}}
+  ): Promise<{{.ResType}}> {
     return request<{{.ReqType}}, {{.ResType}}>(
       this.opts,
       {{quote .Method}},
       {{quote .Path}},
       req,
+{{- if .HeaderFields}}
+      { 'Accept': {{quote .Produces}}, 'Content-Type': {{quote .Consumes}}, ...(headers ?? {}) },
+{{- else}}
       { 'Accept': {{quote .Produces}}, 'Content-Type': {{quote .Consumes}} },
+{{- end}}
+{{- if .ParamSegments}}
+      undefined,
+      params,
+{{- end}}
     )
   }
 
 {{- else if .HasParams}}
-  async {{.MethodName}}(req?: {{.ReqType}}): Promise<{{.ResType}}> {
+  async {{.MethodName}}(
+{{- if .ParamSegments}}
+    params: { {{- range $i, $seg := .ParamSegments}}{{if $i}}, {{end}}{{$seg}}: string | number{{- end}} },
+{{- end}}
+{{- if .HeaderFields}}
+    headers{{if not .HeadersRequired}}?{{end}}: { {{- range $i, $field := .HeaderFields}}{{if $i}}, {{end}}{{$field.Key}}{{if $field.Optional}}?{{end}}: {{$field.Type}}{{- end}} },
+{{- end}}
+    req?: {{.ReqType}},
+  ): Promise<{{.ResType}}> {
     return request<{{.ReqType}}, {{.ResType}}>(
       this.opts,
       {{quote .Method}},
       {{quote .Path}},
       undefined,
+{{- if .HeaderFields}}
+      { 'Accept': {{quote .Produces}}, ...(headers ?? {}) },
+{{- else}}
       { 'Accept': {{quote .Produces}} },
+{{- end}}
       req,
+{{- if .ParamSegments}}
+      params,
+{{- end}}
     )
   }
 
 {{- else}}
-  async {{.MethodName}}(): Promise<{{.ResType}}> {
+  async {{.MethodName}}(
+{{- if .ParamSegments}}
+    params: { {{- range $i, $seg := .ParamSegments}}{{if $i}}, {{end}}{{$seg}}: string | number{{- end}} },
+{{- end}}
+{{- if .HeaderFields}}
+    headers{{if not .HeadersRequired}}?{{end}}: { {{- range $i, $field := .HeaderFields}}{{if $i}}, {{end}}{{$field.Key}}{{if $field.Optional}}?{{end}}: {{$field.Type}}{{- end}} },
+{{- end}}
+  ): Promise<{{.ResType}}> {
     return request<{{.ReqType}}, {{.ResType}}>(
       this.opts,
       {{quote .Method}},
       {{quote .Path}},
       undefined,
+{{- if .HeaderFields}}
+      { 'Accept': {{quote .Produces}}, ...(headers ?? {}) },
+{{- else}}
       { 'Accept': {{quote .Produces}} },
+{{- end}}
+{{- if .ParamSegments}}
+      undefined,
+      params,
+{{- end}}
     )
   }
 

@@ -2,8 +2,11 @@ package httprpc
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -116,5 +119,138 @@ func TestRouterFallback(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected %d, got %d", http.StatusMethodNotAllowed, rec.Code)
+	}
+}
+
+func TestRouterHandler_PathParams(t *testing.T) {
+	type userReq struct {
+		ID int `query:"id"`
+	}
+	type userMeta struct {
+		ID int `path:"id"`
+	}
+	type userRes struct {
+		ID      int    `json:"id"`
+		QueryID int    `json:"query_id"`
+		Param   string `json:"param"`
+	}
+
+	r := New()
+	RegisterHandlerWithMeta[userReq, userMeta, userRes](r.EndpointGroup, GETM(func(ctx context.Context, req userReq, meta userMeta) (userRes, error) {
+		return userRes{ID: meta.ID, QueryID: req.ID, Param: strconv.Itoa(meta.ID)}, nil
+	}, "/users/:id"))
+
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/users/42?id=5", http.NoBody)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var res userRes
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if res.ID != 42 {
+		t.Fatalf("expected id 42, got %d", res.ID)
+	}
+	if res.QueryID != 5 {
+		t.Fatalf("expected query id 5, got %d", res.QueryID)
+	}
+	if res.Param != strconv.Itoa(res.ID) {
+		t.Fatalf("expected param %q, got %q", strconv.Itoa(res.ID), res.Param)
+	}
+}
+
+func TestRouterHandler_MetaHeaders(t *testing.T) {
+	type req struct {
+		Name string `query:"name"`
+	}
+	type meta struct {
+		Auth string `header:"authorization"`
+	}
+	type res struct {
+		Auth string `json:"auth"`
+		Name string `json:"name"`
+	}
+
+	r := New()
+	RegisterHandlerWithMeta[req, meta, res](r.EndpointGroup, GETM(func(ctx context.Context, req req, meta meta) (res, error) {
+		return res{Auth: meta.Auth, Name: req.Name}, nil
+	}, "/me"))
+
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	reqHTTP := httptest.NewRequest(http.MethodGet, "/me?name=alice", http.NoBody)
+	h.ServeHTTP(rec, reqHTTP)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+
+	rec = httptest.NewRecorder()
+	reqHTTP = httptest.NewRequest(http.MethodGet, "/me?name=alice", http.NoBody)
+	reqHTTP.Header.Set("Authorization", "Bearer token")
+	h.ServeHTTP(rec, reqHTTP)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var got res
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.Auth != "Bearer token" {
+		t.Fatalf("expected auth %q, got %q", "Bearer token", got.Auth)
+	}
+	if got.Name != "alice" {
+		t.Fatalf("expected name %q, got %q", "alice", got.Name)
+	}
+}
+
+func TestRouterHandler_PathParams_InvalidPattern(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		errHint string
+	}{
+		{name: "brace-syntax", path: "/users/{id}", errHint: "use :name"},
+		{name: "not-snake-case", path: "/users/:UserID", errHint: "snake_case"},
+		{name: "duplicate-name", path: "/users/:id/:id", errHint: "duplicate path param"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := New()
+			RegisterHandler[struct{}, struct{}](r.EndpointGroup, GET(func(context.Context, struct{}) (struct{}, error) {
+				return struct{}{}, nil
+			}, tt.path))
+
+			if _, err := r.Handler(); err == nil || !strings.Contains(err.Error(), tt.errHint) {
+				t.Fatalf("expected error containing %q, got %v", tt.errHint, err)
+			}
+		})
+	}
+}
+
+func TestRouterHandler_PathParams_Ambiguous(t *testing.T) {
+	r := New()
+	RegisterHandler[struct{}, struct{}](r.EndpointGroup, GET(func(context.Context, struct{}) (struct{}, error) {
+		return struct{}{}, nil
+	}, "/users/:id"))
+	RegisterHandler[struct{}, struct{}](r.EndpointGroup, GET(func(context.Context, struct{}) (struct{}, error) {
+		return struct{}{}, nil
+	}, "/users/:user_id"))
+
+	if _, err := r.Handler(); err == nil || !strings.Contains(err.Error(), "ambiguous route") {
+		t.Fatalf("expected ambiguous route error, got %v", err)
 	}
 }
