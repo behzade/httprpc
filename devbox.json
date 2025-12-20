@@ -4,6 +4,7 @@
     "go@1.25.4",
     "golangci-lint@2.7.1",
     "nodejs",
+    "esbuild",
     "pnpm"
   ],
   "env": {

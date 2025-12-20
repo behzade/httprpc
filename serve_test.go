@@ -254,3 +254,64 @@ func TestRouterHandler_PathParams_Ambiguous(t *testing.T) {
 		t.Fatalf("expected ambiguous route error, got %v", err)
 	}
 }
+
+func TestRegisterHandlerM_RejectsPointerMeta(t *testing.T) {
+	type userMeta struct {
+		ID int `path:"id"`
+	}
+
+	r := New()
+	RegisterHandlerM[struct{}, *userMeta, struct{}](r.EndpointGroup, GETM(func(context.Context, struct{}, *userMeta) (struct{}, error) {
+		return struct{}{}, nil
+	}, "/users/:id"))
+
+	if got := len(r.Handlers); got != 0 {
+		t.Fatalf("expected no handlers registered, got %d", got)
+	}
+	if got := len(r.Metas); got != 0 {
+		t.Fatalf("expected no metas registered, got %d", got)
+	}
+}
+
+func TestRouterHandler_PathNormalization(t *testing.T) {
+	r := New()
+	RegisterHandler[struct{}, int](r.EndpointGroup, GET(func(context.Context, struct{}) (int, error) {
+		return http.StatusOK, nil
+	}, "/users/"), WithCodec[struct{}, int](statusCodec{}))
+
+	h, err := r.Handler()
+	if err != nil {
+		t.Fatalf("handler build error: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/users", http.NoBody)
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
+	}
+}
+
+func TestRouterHandler_PathParams_PatternOrder(t *testing.T) {
+	t.Run("first-registered-wins", func(t *testing.T) {
+		r := New()
+		RegisterHandler[struct{}, int](r.EndpointGroup, GET(func(context.Context, struct{}) (int, error) {
+			return http.StatusTeapot, nil
+		}, "/:first/:second"), WithCodec[struct{}, int](statusCodec{}))
+		RegisterHandler[struct{}, int](r.EndpointGroup, GET(func(context.Context, struct{}) (int, error) {
+			return http.StatusOK, nil
+		}, "/users/:id"), WithCodec[struct{}, int](statusCodec{}))
+
+		h, err := r.Handler()
+		if err != nil {
+			t.Fatalf("handler build error: %v", err)
+		}
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/users/42", http.NoBody)
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusTeapot {
+			t.Fatalf("expected %d, got %d", http.StatusTeapot, rec.Code)
+		}
+	})
+}

@@ -16,8 +16,10 @@ func TestRegisterAfterHandlerLogs(t *testing.T) {
 
 	// Capture log output
 	var buf bytes.Buffer
+	prev := slog.Default()
 	logger := slog.New(slog.NewTextHandler(&buf, nil))
 	slog.SetDefault(logger)
+	defer slog.SetDefault(prev)
 
 	_, _ = r.Handler()
 

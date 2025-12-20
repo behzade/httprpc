@@ -78,6 +78,8 @@ For meta-aware handlers, use `GETM`/`POSTM` and `RegisterHandlerM`.
 
 You can register routes with path parameters using `:name` segments (snake_case):
 
+Route paths are normalized by trimming leading/trailing slashes, so `/users` and `/users/` are equivalent.
+
 ```go
 type GetUserMeta struct {
 	ID int `path:"id"`

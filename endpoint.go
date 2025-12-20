@@ -298,9 +298,15 @@ func RegisterHandlerM[Req, Meta, Res any](eg *EndpointGroup, in EndpointWithMeta
 	}
 
 	metaType := reflect.TypeFor[Meta]()
-	if metaType != nil && deref(metaType).Kind() != reflect.Struct {
-		slog.Error("request meta type must be a struct", "method", in.Method, "path", in.Path, "type", metaType.String())
-		return
+	if metaType != nil {
+		if metaType.Kind() == reflect.Pointer {
+			slog.Error("request meta type must be a struct (non-pointer)", "method", in.Method, "path", in.Path, "type", metaType.String())
+			return
+		}
+		if metaType.Kind() != reflect.Struct {
+			slog.Error("request meta type must be a struct", "method", in.Method, "path", in.Path, "type", metaType.String())
+			return
+		}
 	}
 
 	o := registerOptionsWithMeta[Req, Meta, Res]{

@@ -2,7 +2,10 @@ package httprpc
 
 import (
 	"context"
+	"io"
 	"log/slog"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -47,26 +50,35 @@ func TestRunServerOptions(t *testing.T) {
 	})
 }
 
-func TestRunServerGracefulShutdownEnabled(_ *testing.T) {
+func TestRunServerGracefulShutdownEnabled(t *testing.T) {
 	r := New()
 	RegisterHandler(r.EndpointGroup, GET(func(_ context.Context, _ struct{}) (struct{}, error) {
 		return struct{}{}, nil
 	}, "/test"))
 
-	// Start server in background
+	cfg := runServerConfig{
+		gracefulShutdown: true,
+		shutdownTimeout:  200 * time.Millisecond,
+		logger:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	cfg.withDefaults()
+
+	signals := make(chan os.Signal, 1)
 	serverErr := make(chan error, 1)
 	go func() {
-		// Use a port that's likely available
-		err := r.RunServer("127.0.0.1:0", WithGracefulShutdown(1*time.Second))
-		serverErr <- err
+		serverErr <- r.runServer("127.0.0.1:0", cfg, signals)
 	}()
 
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	signals <- syscall.SIGTERM
 
-	// Note: In a real test environment, we'd need to send a signal or
-	// have a way to trigger shutdown. This test verifies the options
-	// configuration works correctly.
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			t.Fatalf("expected clean shutdown, got %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for server shutdown")
+	}
 }
 
 func TestRunServerConfigurationChaining(t *testing.T) {

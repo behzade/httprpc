@@ -146,6 +146,10 @@ func (r *Router) RunServer(addr string, opts ...RunServerOption) error {
 	}
 	cfg.withDefaults()
 
+	return r.runServer(addr, cfg, nil)
+}
+
+func (r *Router) runServer(addr string, cfg runServerConfig, signals chan os.Signal) error {
 	server := r.Server(addr)
 
 	if !cfg.gracefulShutdown {
@@ -168,15 +172,20 @@ func (r *Router) RunServer(addr string, opts ...RunServerOption) error {
 	}()
 
 	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	quit := signals
+	if quit == nil {
+		quit = make(chan os.Signal, 1)
+		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+		defer signal.Stop(quit)
+	}
 
+	var sig os.Signal
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
-	case sig := <-quit:
-		cfg.logger.Info("received shutdown signal", "signal", sig.String())
+	case sig = <-quit:
 	}
+	cfg.logger.Info("received shutdown signal", "signal", sig.String())
 
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.shutdownTimeout)

@@ -89,7 +89,9 @@ func validateMetaType(meta reflect.Type, path string) error {
 	if meta == nil {
 		return nil
 	}
-	meta = deref(meta)
+	if meta.Kind() == reflect.Pointer {
+		return fmt.Errorf("request meta type must be a struct (non-pointer)")
+	}
 	if meta.Kind() != reflect.Struct {
 		return fmt.Errorf("request meta type %s must be a struct", meta.Kind())
 	}
